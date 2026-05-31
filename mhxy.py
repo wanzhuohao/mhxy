@@ -14,10 +14,11 @@ import pyautogui
 import business
 
 
-def log(msg, level="INFO"):
-    """带时间戳和级别的日志"""
-    ts = time.strftime("%H:%M:%S")
-    print(f"[{ts}] {level:<4} {msg}")
+def log(msg, level=""):
+    """带时间戳的日志"""
+    ts = time.strftime("%H:%M")
+    prefix = f"[{ts}]" if not level else f"[{ts} {level}]"
+    print(f"{prefix} {msg}")
 
 
 # ========== 颜色主题 ==========

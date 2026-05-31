@@ -8,10 +8,11 @@ import os
 pyautogui.FAILSAFE = False
 
 
-def log(msg, level="INFO"):
-    """带时间戳和级别的日志"""
-    ts = time.strftime("%H:%M:%S")
-    print(f"[{ts}] {level:<4} {msg}")
+def log(msg, level=""):
+    """带时间戳的日志"""
+    ts = time.strftime("%H:%M")
+    prefix = f"[{ts}]" if not level else f"[{ts} {level}]"
+    print(f"{prefix} {msg}")
 
 # ========== 模板预加载 ==========
 _TEMPLATE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -75,7 +76,7 @@ def find_and_click(template, yuzhi=0.8, region=None):
     pos = find_pic(template, yuzhi, region)
     if pos:
         pyautogui.click(pos[0], pos[1])
-        log(f"点击: {pos}", "点击")
+        log(f"({pos[0]},{pos[1]})", "点")
         return True
     return False
 
@@ -85,7 +86,7 @@ def find_and_click_offset(template, yuzhi=0.8, region=None, dx=0, dy=0):
     pos = find_pic(template, yuzhi, region)
     if pos:
         pyautogui.click(pos[0] + dx, pos[1] + dy)
-        log(f"点击: ({pos[0]+dx}, {pos[1]+dy})", "点击")
+        log(f"({pos[0]+dx},{pos[1]+dy})", "点")
         return True
     return False
 
