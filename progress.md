@@ -4,6 +4,16 @@
 
 - 无
 
+## 2026-05-31 线程安全 + 安全修复
+
+- toggle_task 按钮 300ms 防抖，防止快速双击启动多线程
+- launch_game_five_times 移到后台线程，GUI 不再冻结 12 秒
+- toggle_zhuogui 按钮防抖 + join 移到后台线程
+- FAILSAFE 恢复为 True（鼠标移到左上角触发紧急停止）
+- fuben_start 硬编码坐标改为 FUBEN_REGION 偏移
+- create_team 添加函数文档说明坐标假设
+- .gitignore 补充 screen.png
+
 ## 2026-05-31 代码迁移与全面优化
 
 - 从 PycharmProjects/1 迁移到独立文件夹，保留原文件不动

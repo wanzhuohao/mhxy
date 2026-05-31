@@ -5,7 +5,7 @@ import numpy as np
 import random
 import os
 
-pyautogui.FAILSAFE = False
+pyautogui.FAILSAFE = True  # 鼠标移到左上角触发紧急停止，防止误操作
 
 
 def log(msg, level=""):
@@ -24,6 +24,7 @@ def _load(path):
     tpl = cv2.imread(full, cv2.IMREAD_GRAYSCALE)
     if tpl is None:
         log(f"模板加载失败: {path}", "WARN")
+        return None
     return tpl
 
 
@@ -227,20 +228,21 @@ def dati_start():
 
 
 def fuben_start():
-    """副本任务"""
+    """副本任务（坐标基于 FUBEN_REGION 左上角偏移）"""
     global stop_fuben
     stop_fuben = False
+    ox, oy = FUBEN_REGION[0], FUBEN_REGION[1]
     try:
         while not stop_fuben:
             if find_and_click_path('fubentiaoguo.bmp', yuzhi=0.65, region=FUBEN_REGION):
                 if _wait(5, lambda: stop_fuben):
                     break
                 dx, dy = random.randint(-5, 5), random.randint(-5, 5)
-                pyautogui.click(744 + dx, 190 + dy)
+                pyautogui.click(ox + 744 + dx, oy + 190 + dy)
                 if _wait(5, lambda: stop_fuben):
                     break
                 dx, dy = random.randint(-5, 5), random.randint(-5, 5)
-                pyautogui.click(638 + dx, 510 + dy)
+                pyautogui.click(ox + 638 + dx, oy + 510 + dy)
                 if _wait(3, lambda: stop_fuben):
                     break
                 continue

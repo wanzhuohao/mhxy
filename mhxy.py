@@ -300,6 +300,9 @@ class GameLauncherApp:
         if need == 0:
             log("已有5个或更多窗口", "WARN")
             return
+        threading.Thread(target=self._launch_five_thread, args=(need,), daemon=True).start()
+
+    def _launch_five_thread(self, need):
         self._launch_game(need)
         time.sleep(5)
         self.arrange_game_windows()
@@ -356,6 +359,7 @@ class GameLauncherApp:
     # ========== 组队 ==========
 
     def create_team(self):
+        """自动组队（坐标基于窗口内偏移，假设 1.5x 缩放）"""
         windows = self._get_game_windows()
         if not windows:
             log("未找到游戏窗口", "WARN")
@@ -404,6 +408,11 @@ class GameLauncherApp:
     # ========== 任务 toggle ==========
 
     def toggle_task(self, name):
+        # 防止快速双击启动多个线程
+        btn = self.task_buttons[name]
+        btn.config(state=tk.DISABLED)
+        self.root.after(300, lambda: btn.config(state=tk.NORMAL))
+
         if self.task_running[name]:
             setattr(business, f'stop_{name}', True)
             self.task_running[name] = False
@@ -441,18 +450,27 @@ class GameLauncherApp:
     # ========== 捉鬼 ==========
 
     def toggle_zhuogui(self):
+        # 防止快速双击
+        btn = self.task_buttons['zhuogui']
+        btn.config(state=tk.DISABLED)
+        self.root.after(300, lambda: btn.config(state=tk.NORMAL))
+
         if self.popup_detection_running:
             self.popup_detection_running = False
-            if self.popup_detection_thread and self.popup_detection_thread.is_alive():
-                self.popup_detection_thread.join(timeout=1.0)
-            self._set_btn_idle('zhuogui')
-            log("停止捉鬼")
+            # join 放后台避免阻塞 GUI
+            threading.Thread(target=self._stop_zhuogui_thread, daemon=True).start()
         else:
             self.popup_detection_running = True
             self._set_btn_running('zhuogui')
             self.popup_detection_thread = threading.Thread(target=self._zhuogui_loop, daemon=True)
             self.popup_detection_thread.start()
             log("开始捉鬼")
+
+    def _stop_zhuogui_thread(self):
+        if self.popup_detection_thread and self.popup_detection_thread.is_alive():
+            self.popup_detection_thread.join(timeout=1.0)
+        self.root.after(0, lambda: self._set_btn_idle('zhuogui'))
+        log("停止捉鬼")
 
     def _zhuogui_loop(self):
         while self.popup_detection_running:
