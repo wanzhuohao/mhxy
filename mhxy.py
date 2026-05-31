@@ -130,11 +130,15 @@ class GameLauncherApp:
         self._make_btn(win_frame, "查分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
             row=1, column=1, padx=2, pady=1, sticky='ew')
 
-        # ---- 分区：队伍操作 ----
+        # ---- 组队 / 全部停止 ----
         team_frame = tk.Frame(main, bg=C_BG)
         team_frame.pack(fill=tk.X, pady=(0, 2))
         team_frame.columnconfigure(0, weight=1)
-        self._make_btn(team_frame, "组  队", self.create_team, C_BTN_SPECIAL).pack(fill=tk.X, padx=2, pady=1)
+        team_frame.columnconfigure(1, weight=1)
+        self._make_btn(team_frame, "组  队", self.create_team, C_BTN_SPECIAL).grid(
+            row=0, column=0, padx=2, pady=1, sticky='ew')
+        self._make_btn(team_frame, "全部停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
+            row=0, column=1, padx=2, pady=1, sticky='ew')
 
         # ---- 分区：任务 ----
         task_frame = tk.Frame(main, bg=C_BG)
