@@ -1,6 +1,7 @@
 import subprocess
 import os
 import sys
+import json
 import time
 import threading
 import random
@@ -63,14 +64,22 @@ class TextRedirector:
 
 
 class GameLauncherApp:
+    CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "window.json")
+
     def __init__(self, root):
         self.root = root
         self.root.title("梦幻助手")
         self.root.configure(bg=C_BG)
         self.root.attributes('-topmost', True)
         self.root.after(500, lambda: self.root.attributes('-topmost', False))
-        self.root.geometry("380x700+1700+200")
         # 不设置 -toolwindow，保任务栏显示
+
+        # 恢复窗口位置和大小
+        geo = self._load_geometry()
+        self.root.geometry(geo)
+
+        # 关闭时保存位置
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.game_launcher_path = r"C:\Program Files\梦幻西游时空\MyLauncher_x64r.exe"
 
@@ -115,63 +124,53 @@ class GameLauncherApp:
         main = tk.Frame(self.root, bg=C_BG)
         main.pack(fill=tk.BOTH, expand=True, padx=6, pady=4)
 
-        # ---- 分区：窗口管理 ----
-        win_frame = tk.Frame(main, bg=C_BG)
-        win_frame.pack(fill=tk.X, pady=(0, 2))
-        for i in range(2):
-            win_frame.columnconfigure(i, weight=1)
+        # 统一 2 列 grid
+        btn_frame = tk.Frame(main, bg=C_BG)
+        btn_frame.pack(fill=tk.X, pady=(0, 2))
+        btn_frame.columnconfigure(0, weight=1)
+        btn_frame.columnconfigure(1, weight=1)
 
-        self._make_btn(win_frame, "启动一个", self.launch_game_once).grid(
-            row=0, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(win_frame, "启动五个", self.launch_game_five_times).grid(
-            row=0, column=1, padx=2, pady=1, sticky='ew')
-        self._make_btn(win_frame, "排列窗口", self.arrange_game_windows).grid(
-            row=1, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(win_frame, "查分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
-            row=1, column=1, padx=2, pady=1, sticky='ew')
+        r = 0  # 当前行号
 
-        # ---- 组队 / 全部停止 ----
-        team_frame = tk.Frame(main, bg=C_BG)
-        team_frame.pack(fill=tk.X, pady=(0, 2))
-        team_frame.columnconfigure(0, weight=1)
-        team_frame.columnconfigure(1, weight=1)
-        self._make_btn(team_frame, "组  队", self.create_team, C_BTN_SPECIAL).grid(
-            row=0, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(team_frame, "全部停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
-            row=0, column=1, padx=2, pady=1, sticky='ew')
+        # 窗口管理
+        self._make_btn(btn_frame, "启动一个", self.launch_game_once).grid(
+            row=r, column=0, padx=2, pady=1, sticky='ew')
+        self._make_btn(btn_frame, "启动五个", self.launch_game_five_times).grid(
+            row=r, column=1, padx=2, pady=1, sticky='ew')
+        r += 1
+        self._make_btn(btn_frame, "排列窗口", self.arrange_game_windows).grid(
+            row=r, column=0, padx=2, pady=1, sticky='ew')
+        self._make_btn(btn_frame, "查分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
+            row=r, column=1, padx=2, pady=1, sticky='ew')
+        r += 1
 
-        # ---- 分区：任务 ----
-        task_frame = tk.Frame(main, bg=C_BG)
-        task_frame.pack(fill=tk.X, pady=(0, 2))
-        for i in range(2):
-            task_frame.columnconfigure(i, weight=1)
+        # 组队 / 全部停止
+        self._make_btn(btn_frame, "组  队", self.create_team, C_BTN_SPECIAL).grid(
+            row=r, column=0, padx=2, pady=1, sticky='ew')
+        self._make_btn(btn_frame, "全部停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
+            row=r, column=1, padx=2, pady=1, sticky='ew')
+        r += 1
 
+        # 任务按钮
         self.task_buttons = {}
-        for name, text, row, col, _ in self.TASK_DEFS:
-            btn = self._make_btn(task_frame, text, None)
-            btn.grid(row=row, column=col, padx=2, pady=1, sticky='ew')
+        for name, text, t_row, t_col, _ in self.TASK_DEFS:
+            btn = self._make_btn(btn_frame, text, None)
+            btn.grid(row=r + t_row, column=t_col, padx=2, pady=1, sticky='ew')
             self.task_buttons[name] = btn
             self.task_running[name] = False
+        r += 3  # 任务占 3 行
 
         # 捉鬼单独绑定
         self.task_buttons['zhuogui'].config(command=self.toggle_zhuogui)
-        # 其他任务绑定 toggle
         for name, _, _, _, _ in self.TASK_DEFS:
             if name != 'zhuogui':
                 self.task_buttons[name].config(command=lambda n=name: self.toggle_task(n))
 
-        # ---- 分区：工具 ----
-        tool_frame = tk.Frame(main, bg=C_BG)
-        tool_frame.pack(fill=tk.X, pady=(0, 2))
-        for i in range(2):
-            tool_frame.columnconfigure(i, weight=1)
-
-        self._make_btn(tool_frame, "抓  点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
-            row=0, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(tool_frame, "一条龙", self.all_in_one, C_BTN_SPECIAL).grid(
-            row=0, column=1, padx=2, pady=1, sticky='ew')
-        self._make_btn(tool_frame, "全部停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
-            row=1, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
+        # 工具
+        self._make_btn(btn_frame, "抓  点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
+            row=r, column=0, padx=2, pady=1, sticky='ew')
+        self._make_btn(btn_frame, "一条龙", self.all_in_one, C_BTN_SPECIAL).grid(
+            row=r, column=1, padx=2, pady=1, sticky='ew')
 
         # ---- 日志区域 ----
         log_frame = tk.Frame(main, bg=C_BORDER, bd=1)
