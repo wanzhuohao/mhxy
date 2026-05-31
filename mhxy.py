@@ -101,6 +101,63 @@ class GameLauncherApp:
         self._build_ui()
         self._check_launcher()
 
+    def _load_geometry(self):
+        """从配置文件读取上次的窗口位置和大小"""
+        try:
+            if os.path.exists(self.CONFIG_FILE):
+                with open(self.CONFIG_FILE, 'r') as f:
+                    cfg = json.load(f)
+                w, h = cfg.get('width', 380), cfg.get('height', 700)
+                x, y = cfg.get('x', 1700), cfg.get('y', 200)
+                return f"{w}x{h}+{x}+{y}"
+        except Exception:
+            pass
+        return "380x700+1700+200"
+
+    def _save_geometry(self):
+        """保存当前窗口位置和大小到配置文件"""
+        try:
+            geo = self.root.geometry()
+            # 格式: "宽x高+x+y"
+            parts = geo.replace('x', ' ').replace('+', ' ').split()
+            cfg = {
+                'width': int(parts[0]),
+                'height': int(parts[1]),
+                'x': int(parts[2]),
+                'y': int(parts[3])
+            }
+            with open(self.CONFIG_FILE, 'w') as f:
+                json.dump(cfg, f)
+        except Exception:
+            pass
+
+    def _on_close(self):
+        """关闭窗口时保存位置"""
+        self._save_geometry()
+        self.root.destroy()
+
+    def _toggle_tool(self):
+        """切换工具按钮：抓点 / 查分辨率"""
+        if self.tool_mode == 'color':
+            self.tool_mode = 'resolution'
+            self.tool_btn.config(text="查分辨率")
+            self.get_window_resolution()
+        else:
+            self.tool_mode = 'color'
+            self.tool_btn.config(text="抓  点")
+            self.get_mouse_position_and_color()
+
+    def _toggle_topmost(self):
+        """切换窗口置顶"""
+        current = self.root.attributes('-topmost')
+        self.root.attributes('-topmost', not current)
+        if current:
+            self.topmost_btn.config(text="置顶")
+            log("取消置顶")
+        else:
+            self.topmost_btn.config(text="取消置顶")
+            log("窗口已置顶")
+
     # ========== 按钮工厂 ==========
 
     def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER):
@@ -140,8 +197,8 @@ class GameLauncherApp:
         r += 1
         self._make_btn(btn_frame, "排列窗口", self.arrange_game_windows).grid(
             row=r, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(btn_frame, "查分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
-            row=r, column=1, padx=2, pady=1, sticky='ew')
+        self.topmost_btn = self._make_btn(btn_frame, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
+        self.topmost_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
         r += 1
 
         # 组队 / 全部停止
@@ -166,9 +223,15 @@ class GameLauncherApp:
             if name != 'zhuogui':
                 self.task_buttons[name].config(command=lambda n=name: self.toggle_task(n))
 
-        # 工具
-        self._make_btn(btn_frame, "抓  点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
-            row=r, column=0, padx=2, pady=1, sticky='ew')
+        # 抓点 / 分辨率 / 一条龙
+        tool_sub = tk.Frame(btn_frame, bg=C_BG)
+        tool_sub.grid(row=r, column=0, padx=2, pady=1, sticky='ew')
+        tool_sub.columnconfigure(0, weight=1)
+        tool_sub.columnconfigure(1, weight=1)
+        self._make_btn(tool_sub, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
+            row=0, column=0, padx=1, pady=0, sticky='ew')
+        self._make_btn(tool_sub, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
+            row=0, column=1, padx=1, pady=0, sticky='ew')
         self._make_btn(btn_frame, "一条龙", self.all_in_one, C_BTN_SPECIAL).grid(
             row=r, column=1, padx=2, pady=1, sticky='ew')
 
