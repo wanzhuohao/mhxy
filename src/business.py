@@ -15,7 +15,7 @@ def log(msg, level=""):
     print(f"{prefix} {msg}")
 
 # ========== 模板预加载 ==========
-_TEMPLATE_DIR = os.path.dirname(os.path.abspath(__file__))
+_TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
 
 
 def _load(path):
@@ -30,19 +30,19 @@ def _load(path):
 
 # 预加载所有模板（模块级，只读一次磁盘）
 TPL = {
-    'fubentiaoguo':   _load('fubentiaoguo.bmp'),
-    'baixiaoxianzi':  _load('baixiaoxianzi.bmp'),
-    'zhuoguiqueding': _load('zhuoguiqueding.bmp'),
-    'zhuoguirenwu':   _load('zhuoguirenwu.bmp'),
-    'zhong':          _load('zhong.bmp'),
-    'xuanzefuben':    _load('xuanzefuben.bmp'),
-    'jinruzhandou':   _load('jinruzhandou.bmp'),
-    'mijingxiangyao': _load('mijingxiangyao.bmp'),
-    'queding':        _load('queding.bmp'),
-    'yasongbiaoyin':  _load('yasongbiaoyin.jpg'),
-    'qiuzhu':         _load('qiuzhu.bmp'),
-    'qiuzhu2':        _load('qiuzhu2.bmp'),
-    'shiyong':        _load('shiyong.bmp'),
+    'fubentiaoguo':   _load('fuben/fubentiaoguo.bmp'),
+    'baixiaoxianzi':  _load('common/baixiaoxianzi.bmp'),
+    'zhuoguiqueding': _load('zhuogui/zhuoguiqueding.bmp'),
+    'zhuoguirenwu':   _load('zhuogui/zhuoguirenwu.bmp'),
+    'zhong':          _load('common/zhong.bmp'),
+    'xuanzefuben':    _load('fuben/xuanzefuben.bmp'),
+    'jinruzhandou':   _load('common/jinruzhandou.bmp'),
+    'mijingxiangyao': _load('mijing/mijingxiangyao.bmp'),
+    'queding':        _load('common/queding.bmp'),
+    'yasongbiaoyin':  _load('yabiao/yasongbiaoyin.jpg'),
+    'qiuzhu':         _load('common/qiuzhu.bmp'),
+    'qiuzhu2':        _load('common/qiuzhu2.bmp'),
+    'shiyong':        _load('common/shiyong.bmp'),
 }
 
 

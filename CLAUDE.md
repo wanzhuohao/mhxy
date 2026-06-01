@@ -16,16 +16,25 @@
 
 ```
 mhxy/
-├── mhxy.py            # GUI 主程序
-├── business.py        # 业务逻辑模块
-├── *.bmp / *.jpg      # 图像识别模板
-└── __pycache__/
+├── src/
+│   ├── mhxy.py        # GUI 主程序
+│   └── business.py    # 业务逻辑模块
+├── templates/
+│   ├── zhuogui/       # 捉鬼相关模板
+│   ├── fuben/         # 副本相关模板
+│   ├── mijing/        # 秘境相关模板
+│   ├── yabiao/        # 押镖相关模板
+│   ├── watu/          # 挖图相关模板
+│   └── common/        # 通用 UI 元素
+├── CLAUDE.md
+├── progress.md
+└── docs/
 ```
 
 ## 运行
 
 ```bash
-python mhxy.py
+python src/mhxy.py
 ```
 
 ## 功能模块
@@ -46,3 +55,4 @@ python mhxy.py
 - 点击添加随机偏移避免检测
 - 所有任务支持 `stop_xxx` 全局标志中断
 - 快捷键 F12 停止所有任务
+- **改完代码重新测试时，必须先杀掉之前的进程**：`taskkill //F //PID <pid>` 或 `taskkill //F //IM python.exe`

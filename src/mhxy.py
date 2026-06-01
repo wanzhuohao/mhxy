@@ -65,7 +65,7 @@ class TextRedirector:
 
 
 class GameLauncherApp:
-    CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "window.json")
+    CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "window.json")
 
     def __init__(self, root):
         self.root = root
@@ -98,6 +98,7 @@ class GameLauncherApp:
         self.popup_detection_running = False
         self.popup_detection_thread = None
         self.popup_check_interval = 3
+        self.arrange_index = 0  # 窗口轮流排列计数器
 
         self._build_ui()
         self._check_launcher()
@@ -304,7 +305,7 @@ class GameLauncherApp:
 
     def _launch_five_thread(self, need):
         self._launch_game(need)
-        time.sleep(5)
+        time.sleep(10)
         self.arrange_game_windows()
 
     def _launch_game(self, count):
@@ -327,10 +328,12 @@ class GameLauncherApp:
             return
 
         to_arrange = [w for w, _ in windows[:5]]
-        if random.choice([True, False]):
-            first = random.choice(to_arrange)
-            to_arrange.remove(first)
+        # 轮流将每个窗口放到第一位
+        if len(to_arrange) > 1:
+            idx = self.arrange_index % len(to_arrange)
+            first = to_arrange.pop(idx)
             to_arrange.insert(0, first)
+            self.arrange_index = (self.arrange_index + 1) % len(to_arrange)
 
         screen_w = win32api.GetSystemMetrics(0)
         screen_h = win32api.GetSystemMetrics(1)
