@@ -26,9 +26,12 @@ mhxy/
 │   ├── yabiao/        # 押镖相关模板
 │   ├── watu/          # 挖图相关模板
 │   └── common/        # 通用 UI 元素
+├── docs/
+│   ├── specs/         # 设计文档
+│   ├── plans/         # 实现方案
+│   └── temp/          # 临时文件
 ├── CLAUDE.md
-├── progress.md
-└── docs/
+└── progress.md
 ```
 
 ## 运行
