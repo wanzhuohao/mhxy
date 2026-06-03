@@ -86,12 +86,14 @@ class GameLauncherApp:
 
         # 任务配置：(名称, 显示文本, 行, 列, 业务函数名)
         self.TASK_DEFS = [
-            ('zhuogui', '捉鬼', 0, 0, None),
-            ('fuben',   '副本', 0, 1, 'fuben_start'),
-            ('mijing',  '秘境', 1, 0, 'mijing_start'),
-            ('yabiao',  '押镖', 1, 1, 'yabiao_start'),
-            ('watu',    '挖图', 2, 0, 'watu_start'),
-            ('dati',    '答题', 2, 1, 'dati_start'),
+            ('shimen',  '师门', 0, 0, 'shimen_start'),
+            ('baotu',   '宝图', 0, 1, 'baotu_start'),
+            ('zhuogui', '捉鬼', 1, 0, None),
+            ('fuben',   '副本', 1, 1, 'fuben_start'),
+            ('mijing',  '秘境', 2, 0, 'mijing_start'),
+            ('yabiao',  '押镖', 2, 1, 'yabiao_start'),
+            ('watu',    '挖图', 3, 0, 'watu_start'),
+            ('dati',    '答题', 3, 1, 'dati_start'),
         ]
 
         self.task_running = {}
@@ -217,7 +219,7 @@ class GameLauncherApp:
             btn.grid(row=r + t_row, column=t_col, padx=2, pady=1, sticky='ew')
             self.task_buttons[name] = btn
             self.task_running[name] = False
-        r += 3  # 任务占 3 行
+        r += 4  # 任务占 4 行
 
         # 捉鬼单独绑定
         self.task_buttons['zhuogui'].config(command=self.toggle_zhuogui)
@@ -427,8 +429,33 @@ class GameLauncherApp:
             self._set_btn_running(name)
             func = getattr(business, f'{name}_start', None)
             if func:
-                threading.Thread(target=func, daemon=True).start()
+                threading.Thread(target=self._run_task_on_all_windows, args=(func, name), daemon=True).start()
             log(f"启动{name}")
+
+    def _run_task_on_all_windows(self, func, name):
+        """在所有游戏窗口上依次执行任务"""
+        windows = self._get_game_windows()
+        if not windows:
+            log("未找到游戏窗口", "WARN")
+            self.task_running[name] = False
+            self._set_btn_idle(name)
+            return
+
+        for i, (hwnd, rect) in enumerate(windows):
+            if not self.task_running[name]:
+                break
+            log(f"── 窗口{i+1}/{len(windows)} ──")
+            try:
+                win32gui.SetForegroundWindow(hwnd)
+                time.sleep(1)
+                func()
+            except Exception as e:
+                log(f"窗口{i+1}执行出错: {e}", "ERR")
+            time.sleep(2)
+
+        self.task_running[name] = False
+        self.root.after(0, lambda: self._set_btn_idle(name))
+        log(f"{name}全部完成")
 
     def _set_btn_running(self, name):
         btn = self.task_buttons[name]

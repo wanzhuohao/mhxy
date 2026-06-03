@@ -31,19 +31,29 @@ def _load(path):
 # 预加载所有模板（模块级，只读一次磁盘）
 TPL = {
     'fubentiaoguo':   _load('fuben/fubentiaoguo.bmp'),
-    'baixiaoxianzi':  _load('common/baixiaoxianzi.bmp'),
-    'zhuoguiqueding': _load('zhuogui/zhuoguiqueding.bmp'),
-    'zhuoguirenwu':   _load('zhuogui/zhuoguirenwu.bmp'),
-    'zhong':          _load('common/zhong.bmp'),
-    'xuanzefuben':    _load('fuben/xuanzefuben.bmp'),
-    'jinruzhandou':   _load('common/jinruzhandou.bmp'),
+    'jinruzhandou':   _load('mijing/jinruzhandou.bmp'),
     'mijingxiangyao': _load('mijing/mijingxiangyao.bmp'),
     'queding':        _load('common/queding.bmp'),
     'yasongbiaoyin':  _load('yabiao/yasongbiaoyin.jpg'),
-    'qiuzhu':         _load('common/qiuzhu.bmp'),
-    'qiuzhu2':        _load('common/qiuzhu2.bmp'),
+    'qiuzhu':         _load('dati/qiuzhu.bmp'),
+    'qiuzhu2':        _load('dati/qiuzhu2.bmp'),
     'shiyong':        _load('common/shiyong.bmp'),
+    'renwu':          _load('common/renwu.bmp'),
+    # 师门任务模板
+    'shimenrenwu':    _load('shimen/shimenrenwu.bmp'),
+    'quwancheng':     _load('shimen/quwancheng.bmp'),
+    'shimen_complete': _load('shimen/shimen_complete.bmp'),
+    'shimen_confirm':  _load('shimen/shimen_confirm.bmp'),
+    'shimen_x':        _load('shimen/shimen_x.bmp'),
+    # 宝图任务模板
+    'huodong':        _load('common/huodong.bmp'),
+    'baoturenwu':     _load('baotu/baoturenwu.bmp'),
+    'tingtingwufang': _load('baotu/tingtingwufang.bmp'),
+    'renwu_baotu':    _load('baotu/renwu_baotu.bmp'),
 }
+
+# 宝图搜索区域（y < 300）
+BAOTU_REGION = (0, 0, 2600, 300)
 
 
 # ========== 核心匹配 ==========
@@ -72,27 +82,19 @@ def find_pic(template, yuzhi=0.8, region=None):
     return False
 
 
-def find_and_click(template, yuzhi=0.8, region=None):
-    """查找模板并点击中心，返回 True/False"""
+def find_and_click(template, yuzhi=0.8, region=None, dx=0, dy=0, rand=5):
+    """查找模板并点击中心（+偏移+随机），返回 True/False"""
     pos = find_pic(template, yuzhi, region)
     if pos:
-        pyautogui.click(pos[0], pos[1])
-        log(f"({pos[0]},{pos[1]})", "点")
+        x = pos[0] + dx + random.randint(-rand, rand)
+        y = pos[1] + dy + random.randint(-rand, rand)
+        pyautogui.click(x, y)
+        log(f"({x},{y})", "点")
         return True
     return False
 
 
-def find_and_click_offset(template, yuzhi=0.8, region=None, dx=0, dy=0):
-    """查找模板并点击偏移位置，返回 True/False"""
-    pos = find_pic(template, yuzhi, region)
-    if pos:
-        pyautogui.click(pos[0] + dx, pos[1] + dy)
-        log(f"({pos[0]+dx},{pos[1]+dy})", "点")
-        return True
-    return False
-
-
-def find_and_click_path(template_path, yuzhi=0.8, region=None, dx=0, dy=0):
+def find_and_click_path(template_path, yuzhi=0.8, region=None, dx=0, dy=0, rand=5):
     """按文件名查找并点击（内部用预加载模板，不重复读磁盘）"""
     name = os.path.splitext(os.path.basename(template_path))[0]
     tpl = TPL.get(name)
@@ -101,7 +103,7 @@ def find_and_click_path(template_path, yuzhi=0.8, region=None, dx=0, dy=0):
         if tpl is None:
             log(f"无法加载: {template_path}", "ERR")
             return False
-    return find_and_click_offset(tpl, yuzhi, region, dx, dy)
+    return find_and_click(tpl, yuzhi, region, dx, dy, rand)
 
 
 def find_all(template, yuzhi=0.8, region=None):
@@ -138,12 +140,14 @@ stop_mijing = False
 stop_yabiao = False
 stop_dati = False
 stop_fuben = False
+stop_shimen = False
+stop_baotu = False
 
 
 def stop_all():
     """停止所有任务"""
-    global stop_watu, stop_mijing, stop_yabiao, stop_dati, stop_fuben
-    stop_watu = stop_mijing = stop_yabiao = stop_dati = stop_fuben = True
+    global stop_watu, stop_mijing, stop_yabiao, stop_dati, stop_fuben, stop_shimen, stop_baotu
+    stop_watu = stop_mijing = stop_yabiao = stop_dati = stop_fuben = stop_shimen = stop_baotu = True
 
 
 # ========== 默认区域 ==========
@@ -268,3 +272,107 @@ def all_in_one():
         log(f"── {name} 完成 ──")
         time.sleep(2)
     log("══ 一条龙完成 ══")
+
+
+def shimen_start():
+    """师门任务：点击2次后循环等待完成，间隔30秒"""
+    global stop_shimen
+    stop_shimen = False
+    try:
+        # 第1次：检测师门任务图标并点击
+        for i in range(10):
+            if stop_shimen:
+                return
+            if find_and_click(TPL['shimenrenwu'], yuzhi=0.85, dx=50, dy=10):
+                log("检测到师门任务，点击进入")
+                if _wait(2, lambda: stop_shimen):
+                    return
+                if find_and_click(TPL['quwancheng'], yuzhi=0.95):
+                    log("点击去完成")
+                    break
+            time.sleep(1)
+        else:
+            log("师门任务：等待超时，未检测到任务")
+            return
+
+        # 第2次：再次点击师门任务
+        for i in range(10):
+            if stop_shimen:
+                return
+            if find_and_click(TPL['shimenrenwu'], yuzhi=0.85, dx=50, dy=10):
+                log("再次点击师门任务")
+                if _wait(2, lambda: stop_shimen):
+                    return
+                if find_and_click(TPL['quwancheng'], yuzhi=0.95):
+                    log("点击去完成")
+                    break
+            time.sleep(1)
+        else:
+            log("师门任务：第二次等待超时")
+            return
+
+        # 循环等待师门任务完成，间隔30秒
+        log("等待师门任务完成...")
+        while not stop_shimen:
+            if find_pic(TPL['shimen_complete'], yuzhi=0.85):
+                log("检测到师门任务完成")
+                if find_and_click(TPL['shimen_confirm'], yuzhi=0.85):
+                    log("点击确定")
+                    if _wait(1, lambda: stop_shimen):
+                        break
+                    find_and_click(TPL['shimen_x'], yuzhi=0.85)
+                    log("点击关闭")
+                break
+            time.sleep(30)
+
+    except KeyboardInterrupt:
+        log("师门已终止")
+
+
+def _is_baotu_complete():
+    """宝图任务完成判断：有 renwu 且没有 renwu_baotu"""
+    has_renwu = find_pic(TPL['renwu'], yuzhi=0.8) is not False
+    has_baotu = find_pic(TPL['renwu_baotu'], yuzhi=0.8) is not False
+    return has_renwu and not has_baotu
+
+
+def baotu_start():
+    """宝图任务（一次性启动，循环等待图片出现）"""
+    global stop_baotu
+    stop_baotu = False
+    max_wait = 10  # 最多等待 10 次
+    try:
+        for i in range(max_wait):
+            if stop_baotu:
+                break
+            # 点击活动按钮
+            if find_and_click(TPL['huodong'], yuzhi=0.85):
+                log("点击活动")
+                if _wait(2, lambda: stop_baotu):
+                    break
+                # 点击宝图任务（x+130, y+15）
+                if find_and_click(TPL['baoturenwu'], yuzhi=0.75, dx=130, dy=15):
+                    log("点击宝图任务")
+                    if _wait(3, lambda: stop_baotu):
+                        break
+                    # 点击听听无妨
+                    if find_and_click(TPL['tingtingwufang'], yuzhi=0.75):
+                        log("点击听听无妨")
+                        break
+            time.sleep(1)
+        else:
+            log("宝图任务：等待超时，未检测到任务")
+            return
+
+        # 循环等待宝图任务完成，间隔30秒
+        log("等待宝图任务完成...")
+        while not stop_baotu:
+            if _is_baotu_complete():
+                log("宝图任务完成！")
+                break
+            # 未完成，点击 renwu_baotu（x+50, y+10）
+            find_and_click(TPL['renwu_baotu'], yuzhi=0.8, dx=50, dy=10)
+            time.sleep(30)
+
+    except KeyboardInterrupt:
+        log("宝图已终止")
