@@ -1,44 +1,20 @@
-# mhxy 开发进度
+# 梦幻西游辅助工具 开发进度
 
 ## 待办
 
-- 梦幻脚本和飞书联动（CLI 发消息通知任务状态）
-- 师门任务实际游戏测试
+- 无
 
-## 2026-06-04 师门任务自动化优化
+## 2026-06-04 删除链游卡牌代码
 
-- 重构 shimen_start() 为模块化架构（3个子函数）
-- 添加任务循环：最多执行20个师门任务
-- 添加超时机制：每个任务最长等待2分钟
-- 优化检查间隔：从30秒缩短到5秒
-- 添加任务计数和完成统计
-- 添加异常处理和错误日志
-- **修复多窗口并行执行逻辑**：所有窗口先点任务图标，再一起点去完成
-- 解决原来只处理2个窗口的问题
+- 删除 contracts/、hardhat.config.js、package.json、test/、scripts/、docs/、artifacts/、cache/、node_modules/
+- CLAUDE.md 改回"梦幻西游辅助工具"描述
+- progress.md 清空卡牌相关待办
 
-## 2026-06-01 修复桌面快捷方式
+## 2026-06-01 快捷方式修复
 
-- 修复桌面「梦幻西游辅助.bat」路径错误：`python mhxy.py` → `python src/mhxy.py`
-
-## 2026-05-31 线程安全 + 安全修复
-
-- toggle_task 按钮 300ms 防抖，防止快速双击启动多线程
-- launch_game_five_times 移到后台线程，GUI 不再冻结 12 秒
-- toggle_zhuogui 按钮防抖 + join 移到后台线程
-- FAILSAFE 恢复为 True（鼠标移到左上角触发紧急停止）
-- fuben_start 硬编码坐标改为 FUBEN_REGION 偏移
-- create_team 添加函数文档说明坐标假设
-- .gitignore 补充 screen.png
+- 修复 mhxy 桌面快捷方式路径错误
 
 ## 2026-05-31 代码迁移与全面优化
 
-- 从 PycharmProjects/1 迁移到独立文件夹，保留原文件不动
-- business.py：4个重复匹配函数统一为 find_pic/find_and_click/find_and_click_offset，模板预加载
-- mhxy.py：数据驱动按钮创建，统一 toggle_task 方法，深色主题 UI
-- 添加日志框（TextRedirector），日志带时间戳
-- 窗口位置/大小记忆（window.json）
-- 添加置顶/取消置顶切换按钮
-- 抓点+分辨率合并为两个小按钮共占一格
-- 按钮顺序调整：捉鬼/副本/秘境/押镖/挖图/答题
-- 移除师门/宝图/帮派/跑环（游戏内已自动或不需要）
-- 添加 .gitignore，移除 __pycache__ 跟踪
+- 统一匹配函数、深色UI、日志框、窗口记忆、置顶切换
+- 窗口位置记忆功能，关闭时保存位置，启动时恢复
