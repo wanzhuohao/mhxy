@@ -433,7 +433,7 @@ class GameLauncherApp:
             log(f"启动{name}")
 
     def _run_task_on_all_windows(self, func, name):
-        """在所有游戏窗口上依次执行任务"""
+        """在所有游戏窗口上执行任务"""
         windows = self._get_game_windows()
         if not windows:
             log("未找到游戏窗口", "WARN")
@@ -441,17 +441,25 @@ class GameLauncherApp:
             self._set_btn_idle(name)
             return
 
-        for i, (hwnd, rect) in enumerate(windows):
-            if not self.task_running[name]:
-                break
-            log(f"── 窗口{i+1}/{len(windows)} ──")
+        # 师门任务：并行执行（所有窗口先点第一步，再一起点第二步）
+        if name == 'shimen':
             try:
-                win32gui.SetForegroundWindow(hwnd)
-                time.sleep(1)
-                func()
+                func(windows=windows)  # 传递窗口列表
             except Exception as e:
-                log(f"窗口{i+1}执行出错: {e}", "ERR")
-            time.sleep(2)
+                log(f"师门任务执行出错: {e}", "ERR")
+        else:
+            # 其他任务：顺序执行（一个窗口完成所有步骤再处理下一个）
+            for i, (hwnd, rect) in enumerate(windows):
+                if not self.task_running[name]:
+                    break
+                log(f"── 窗口{i+1}/{len(windows)} ──")
+                try:
+                    win32gui.SetForegroundWindow(hwnd)
+                    time.sleep(1)
+                    func()
+                except Exception as e:
+                    log(f"窗口{i+1}执行出错: {e}", "ERR")
+                time.sleep(2)
 
         self.task_running[name] = False
         self.root.after(0, lambda: self._set_btn_idle(name))

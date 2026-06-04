@@ -274,12 +274,20 @@ def all_in_one():
     log("══ 一条龙完成 ══")
 
 
-def shimen_start():
-    """师门任务自动化：点击任务→等待完成→确认关闭，循环执行"""
+def shimen_start(windows=None):
+    """师门任务自动化：所有窗口并行执行每个步骤
+
+    Args:
+        windows: 窗口列表 [(hwnd, rect), ...]，None时为单窗口模式
+    """
     global stop_shimen
     stop_shimen = False
     max_tasks = 20  # 最多执行20个师门任务
     completed = 0
+
+    # 单窗口模式（兼容旧调用）
+    if windows is None:
+        windows = [(None, None)]
 
     try:
         for task_num in range(1, max_tasks + 1):
@@ -289,21 +297,21 @@ def shimen_start():
 
             log(f"── 师门任务 {task_num} 开始 ──")
 
-            # 步骤1：检测并点击师门任务图标
-            if not _shimen_click_task_icon():
+            # 步骤1：所有窗口点击师门任务图标
+            if not _shimen_click_task_icon_all_windows(windows):
                 if completed > 0:
                     log(f"师门任务结束，共完成 {completed} 个")
                 else:
                     log("师门任务：未检测到任务图标")
                 return
 
-            # 步骤2：点击"去完成"
-            if not _shimen_click_complete():
+            # 步骤2：所有窗口点击"去完成"
+            if not _shimen_click_complete_all_windows(windows):
                 log("师门任务：未找到去完成按钮")
                 return
 
-            # 步骤3：等待任务完成
-            if not _shimen_wait_completion(task_num):
+            # 步骤3：等待所有窗口任务完成
+            if not _shimen_wait_completion_all_windows(windows, task_num):
                 return
 
             completed += 1
@@ -321,39 +329,72 @@ def shimen_start():
         log(f"师门任务出错: {e}", "ERR")
 
 
-def _shimen_click_task_icon():
-    """点击师门任务图标，返回是否成功"""
+def _shimen_click_task_icon_all_windows(windows):
+    """所有窗口点击师门任务图标，返回是否全部成功"""
     for i in range(15):
         if stop_shimen:
             return False
-        if find_and_click(TPL['shimenrenwu'], yuzhi=0.85, dx=50, dy=10):
-            log("点击师门任务图标")
+
+        success_count = 0
+        for hwnd, rect in windows:
+            # 切换到窗口
+            if hwnd is not None:
+                try:
+                    win32gui.SetForegroundWindow(hwnd)
+                    time.sleep(0.5)
+                except Exception:
+                    continue
+
+            if find_and_click(TPL['shimenrenwu'], yuzhi=0.85, dx=50, dy=10):
+                success_count += 1
+                log(f"窗口点击师门任务图标")
+
+        if success_count == len(windows):
             if _wait(2, lambda: stop_shimen):
                 return False
             return True
+
         time.sleep(1)
     return False
 
 
-def _shimen_click_complete():
-    """点击去完成按钮，返回是否成功"""
+def _shimen_click_complete_all_windows(windows):
+    """所有窗口点击去完成按钮，返回是否全部成功"""
     for i in range(10):
         if stop_shimen:
             return False
-        if find_and_click(TPL['quwancheng'], yuzhi=0.95):
-            log("点击去完成")
+
+        success_count = 0
+        for hwnd, rect in windows:
+            # 切换到窗口
+            if hwnd is not None:
+                try:
+                    win32gui.SetForegroundWindow(hwnd)
+                    time.sleep(0.5)
+                except Exception:
+                    continue
+
+            if find_and_click(TPL['quwancheng'], yuzhi=0.95):
+                success_count += 1
+                log(f"窗口点击去完成")
+
+        if success_count == len(windows):
             if _wait(2, lambda: stop_shimen):
                 return False
             return True
+
         time.sleep(1)
     return False
 
 
-def _shimen_wait_completion(task_num):
-    """等待师门任务完成，返回是否成功"""
+def _shimen_wait_completion_all_windows(windows, task_num):
+    """等待所有窗口师门任务完成，返回是否全部成功"""
     log(f"等待师门任务 {task_num} 完成...")
     timeout = 120  # 最长等待2分钟
     start_time = time.time()
+
+    # 跟踪每个窗口的完成状态
+    window_completed = [False] * len(windows)
 
     while not stop_shimen:
         # 检查超时
@@ -361,16 +402,33 @@ def _shimen_wait_completion(task_num):
             log(f"师门任务 {task_num} 等待超时", "WARN")
             return False
 
-        # 检测完成状态
-        if find_pic(TPL['shimen_complete'], yuzhi=0.85):
-            log("检测到师门任务完成")
-            if find_and_click(TPL['shimen_confirm'], yuzhi=0.85):
-                log("点击确定")
-                if _wait(1, lambda: stop_shimen):
-                    return False
-                find_and_click(TPL['shimen_x'], yuzhi=0.85)
-                log("点击关闭")
-                return True
+        # 检查每个窗口
+        for idx, (hwnd, rect) in enumerate(windows):
+            if window_completed[idx]:
+                continue  # 已完成，跳过
+
+            # 切换到窗口
+            if hwnd is not None:
+                try:
+                    win32gui.SetForegroundWindow(hwnd)
+                    time.sleep(0.3)
+                except Exception:
+                    continue
+
+            # 检测完成状态
+            if find_pic(TPL['shimen_complete'], yuzhi=0.85):
+                log(f"窗口 {idx+1} 检测到师门任务完成")
+                if find_and_click(TPL['shimen_confirm'], yuzhi=0.85):
+                    log(f"窗口 {idx+1} 点击确定")
+                    if _wait(1, lambda: stop_shimen):
+                        return False
+                    find_and_click(TPL['shimen_x'], yuzhi=0.85)
+                    log(f"窗口 {idx+1} 点击关闭")
+                    window_completed[idx] = True
+
+        # 检查是否全部完成
+        if all(window_completed):
+            return True
 
         time.sleep(5)  # 缩短检查间隔到5秒
 
