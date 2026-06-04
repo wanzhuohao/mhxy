@@ -275,58 +275,106 @@ def all_in_one():
 
 
 def shimen_start():
-    """师门任务：点击2次后循环等待完成，间隔30秒"""
+    """师门任务自动化：点击任务→等待完成→确认关闭，循环执行"""
     global stop_shimen
     stop_shimen = False
+    max_tasks = 20  # 最多执行20个师门任务
+    completed = 0
+
     try:
-        # 第1次：检测师门任务图标并点击
-        for i in range(10):
+        for task_num in range(1, max_tasks + 1):
             if stop_shimen:
+                log(f"师门任务被中断，已完成 {completed} 个")
                 return
-            if find_and_click(TPL['shimenrenwu'], yuzhi=0.85, dx=50, dy=10):
-                log("检测到师门任务，点击进入")
-                if _wait(2, lambda: stop_shimen):
-                    return
-                if find_and_click(TPL['quwancheng'], yuzhi=0.95):
-                    log("点击去完成")
-                    break
-            time.sleep(1)
-        else:
-            log("师门任务：等待超时，未检测到任务")
-            return
 
-        # 第2次：再次点击师门任务
-        for i in range(10):
-            if stop_shimen:
+            log(f"── 师门任务 {task_num} 开始 ──")
+
+            # 步骤1：检测并点击师门任务图标
+            if not _shimen_click_task_icon():
+                if completed > 0:
+                    log(f"师门任务结束，共完成 {completed} 个")
+                else:
+                    log("师门任务：未检测到任务图标")
                 return
-            if find_and_click(TPL['shimenrenwu'], yuzhi=0.85, dx=50, dy=10):
-                log("再次点击师门任务")
-                if _wait(2, lambda: stop_shimen):
-                    return
-                if find_and_click(TPL['quwancheng'], yuzhi=0.95):
-                    log("点击去完成")
-                    break
-            time.sleep(1)
-        else:
-            log("师门任务：第二次等待超时")
-            return
 
-        # 循环等待师门任务完成，间隔30秒
-        log("等待师门任务完成...")
-        while not stop_shimen:
-            if find_pic(TPL['shimen_complete'], yuzhi=0.85):
-                log("检测到师门任务完成")
-                if find_and_click(TPL['shimen_confirm'], yuzhi=0.85):
-                    log("点击确定")
-                    if _wait(1, lambda: stop_shimen):
-                        break
-                    find_and_click(TPL['shimen_x'], yuzhi=0.85)
-                    log("点击关闭")
-                break
-            time.sleep(30)
+            # 步骤2：点击"去完成"
+            if not _shimen_click_complete():
+                log("师门任务：未找到去完成按钮")
+                return
+
+            # 步骤3：等待任务完成
+            if not _shimen_wait_completion(task_num):
+                return
+
+            completed += 1
+            log(f"师门任务 {task_num} 完成 ✓")
+
+            # 任务间隔，避免操作过快
+            if _wait(3, lambda: stop_shimen):
+                return
+
+        log(f"师门任务全部完成，共 {completed} 个")
 
     except KeyboardInterrupt:
         log("师门已终止")
+    except Exception as e:
+        log(f"师门任务出错: {e}", "ERR")
+
+
+def _shimen_click_task_icon():
+    """点击师门任务图标，返回是否成功"""
+    for i in range(15):
+        if stop_shimen:
+            return False
+        if find_and_click(TPL['shimenrenwu'], yuzhi=0.85, dx=50, dy=10):
+            log("点击师门任务图标")
+            if _wait(2, lambda: stop_shimen):
+                return False
+            return True
+        time.sleep(1)
+    return False
+
+
+def _shimen_click_complete():
+    """点击去完成按钮，返回是否成功"""
+    for i in range(10):
+        if stop_shimen:
+            return False
+        if find_and_click(TPL['quwancheng'], yuzhi=0.95):
+            log("点击去完成")
+            if _wait(2, lambda: stop_shimen):
+                return False
+            return True
+        time.sleep(1)
+    return False
+
+
+def _shimen_wait_completion(task_num):
+    """等待师门任务完成，返回是否成功"""
+    log(f"等待师门任务 {task_num} 完成...")
+    timeout = 120  # 最长等待2分钟
+    start_time = time.time()
+
+    while not stop_shimen:
+        # 检查超时
+        if time.time() - start_time > timeout:
+            log(f"师门任务 {task_num} 等待超时", "WARN")
+            return False
+
+        # 检测完成状态
+        if find_pic(TPL['shimen_complete'], yuzhi=0.85):
+            log("检测到师门任务完成")
+            if find_and_click(TPL['shimen_confirm'], yuzhi=0.85):
+                log("点击确定")
+                if _wait(1, lambda: stop_shimen):
+                    return False
+                find_and_click(TPL['shimen_x'], yuzhi=0.85)
+                log("点击关闭")
+                return True
+
+        time.sleep(5)  # 缩短检查间隔到5秒
+
+    return False
 
 
 def _is_baotu_complete():
