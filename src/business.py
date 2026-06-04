@@ -15,9 +15,10 @@ FEISHU_CHAT_ID = "oc_28198b42827f152e43de37e771e0341e"
 def send_feishu_msg(text):
     """发送飞书消息"""
     try:
+        lark_cli = r"C:\Users\Administrator\AppData\Roaming\npm\lark-cli.cmd"
         subprocess.run(
-            ['bash', '-c', f'lark-cli im +messages-send --chat-id {FEISHU_CHAT_ID} --as bot --text "{text}"'],
-            capture_output=True, timeout=10
+            [lark_cli, 'im', '+messages-send', '--chat-id', FEISHU_CHAT_ID, '--as', 'bot', '--text', text],
+            capture_output=True, timeout=10, shell=True
         )
     except Exception as e:
         log(f"飞书通知失败: {e}", "WARN")
