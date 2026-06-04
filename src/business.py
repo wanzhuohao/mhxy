@@ -197,7 +197,6 @@ def watu_start():
         send_feishu_msg("✅ 挖图任务完成")
     except KeyboardInterrupt:
         log("挖图已终止")
-        send_feishu_msg("⚠️ 挖图任务被手动终止")
 
 
 def mijing_start():
@@ -217,7 +216,6 @@ def mijing_start():
         send_feishu_msg("✅ 秘境任务完成")
     except KeyboardInterrupt:
         log("秘境已终止")
-        send_feishu_msg("⚠️ 秘境任务被手动终止")
 
 
 def yabiao_start():
@@ -237,7 +235,6 @@ def yabiao_start():
         send_feishu_msg("✅ 押镖任务完成")
     except KeyboardInterrupt:
         log("押镖已终止")
-        send_feishu_msg("⚠️ 押镖任务被手动终止")
 
 
 def dati_start():
@@ -255,7 +252,6 @@ def dati_start():
         send_feishu_msg("✅ 答题任务完成")
     except KeyboardInterrupt:
         log("答题已终止")
-        send_feishu_msg("⚠️ 答题任务被手动终止")
 
 
 def fuben_start():
@@ -286,7 +282,6 @@ def fuben_start():
         send_feishu_msg("✅ 副本任务完成")
     except KeyboardInterrupt:
         log("副本已终止")
-        send_feishu_msg("⚠️ 副本任务被手动终止")
 
 
 def all_in_one():
@@ -323,20 +318,50 @@ def shimen_start(windows=None):
 
     send_feishu_msg("🎮 师门任务开始")
     try:
-        for task_num in range(1, max_tasks + 1):
+        # 先尝试3次找到第一个任务图标
+        first_found = False
+        for attempt in range(3):
             if stop_shimen:
-                log(f"师门任务被中断，已完成 {completed} 个")
-                send_feishu_msg(f"⚠️ 师门任务中断，已完成 {completed} 个")
+                return
+            if _shimen_click_task_icon_all_windows(windows):
+                first_found = True
+                break
+            log(f"师门任务：第 {attempt+1} 次未找到任务图标")
+            time.sleep(2)
+
+        if not first_found:
+            log("师门任务：3次未找到任务图标，跳过")
+            send_feishu_msg("✅ 师门任务完成（无任务）")
+            return
+
+        completed = 1
+        log("── 师门任务 1 开始 ──")
+
+        # 步骤2：所有窗口点击"去完成"
+        if not _shimen_click_complete_all_windows(windows):
+            log("师门任务：未找到去完成按钮")
+            send_feishu_msg("✅ 师门任务完成（无任务）")
+            return
+
+        # 步骤3：等待所有窗口任务完成
+        if not _shimen_wait_completion_all_windows(windows, 1):
+            send_feishu_msg("✅ 师门任务完成")
+            return
+
+        log("师门任务 1 完成 ✓")
+
+        for task_num in range(2, max_tasks + 1):
+            if stop_shimen:
+                log(f"师门任务结束，已完成 {completed} 个")
+                send_feishu_msg(f"✅ 师门任务完成，共 {completed} 个")
                 return
 
             log(f"── 师门任务 {task_num} 开始 ──")
 
             # 步骤1：所有窗口点击师门任务图标
             if not _shimen_click_task_icon_all_windows(windows):
-                if completed > 0:
-                    log(f"师门任务结束，共完成 {completed} 个")
-                else:
-                    log("师门任务：未检测到任务图标")
+                log(f"师门任务结束，共完成 {completed} 个")
+                send_feishu_msg(f"✅ 师门任务完成，共 {completed} 个")
                 return
 
             # 步骤2：所有窗口点击"去完成"
@@ -360,7 +385,6 @@ def shimen_start(windows=None):
 
     except KeyboardInterrupt:
         log("师门已终止")
-        send_feishu_msg("⚠️ 师门任务被手动终止")
     except Exception as e:
         log(f"师门任务出错: {e}", "ERR")
         send_feishu_msg(f"❌ 师门任务出错: {e}")
@@ -486,27 +510,32 @@ def baotu_start():
     max_wait = 10  # 最多等待 10 次
     send_feishu_msg("🎮 宝图任务开始")
     try:
-        for i in range(max_wait):
+        # 先尝试3次找到活动按钮
+        first_found = False
+        for attempt in range(3):
             if stop_baotu:
-                break
-            # 点击活动按钮
+                return
             if find_and_click(TPL['huodong'], yuzhi=0.85):
                 log("点击活动")
-                if _wait(2, lambda: stop_baotu):
-                    break
-                # 点击宝图任务（x+130, y+15）
-                if find_and_click(TPL['baoturenwu'], yuzhi=0.75, dx=130, dy=15):
-                    log("点击宝图任务")
-                    if _wait(3, lambda: stop_baotu):
-                        break
-                    # 点击听听无妨
-                    if find_and_click(TPL['tingtingwufang'], yuzhi=0.75):
-                        log("点击听听无妨")
-                        break
-            time.sleep(1)
-        else:
-            log("宝图任务：等待超时，未检测到任务")
+                first_found = True
+                break
+            log(f"宝图任务：第 {attempt+1} 次未找到活动按钮")
+            time.sleep(2)
+
+        if not first_found:
+            log("宝图任务：3次未找到活动按钮，跳过")
+            send_feishu_msg("✅ 宝图任务完成（无任务）")
             return
+
+        # 点击宝图任务和听听无妨
+        if _wait(2, lambda: stop_baotu):
+            return
+        if find_and_click(TPL['baoturenwu'], yuzhi=0.75, dx=130, dy=15):
+            log("点击宝图任务")
+            if _wait(3, lambda: stop_baotu):
+                return
+            find_and_click(TPL['tingtingwufang'], yuzhi=0.75)
+            log("点击听听无妨")
 
         # 循环等待宝图任务完成，间隔30秒
         log("等待宝图任务完成...")
@@ -521,4 +550,3 @@ def baotu_start():
 
     except KeyboardInterrupt:
         log("宝图已终止")
-        send_feishu_msg("⚠️ 宝图任务被手动终止")
