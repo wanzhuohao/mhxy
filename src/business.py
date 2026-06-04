@@ -4,8 +4,23 @@ import cv2
 import numpy as np
 import random
 import os
+import subprocess
 
 pyautogui.FAILSAFE = True  # 鼠标移到左上角触发紧急停止，防止误操作
+
+# 飞书通知配置
+FEISHU_CHAT_ID = "oc_28198b42827f152e43de37e771e0341e"
+
+
+def send_feishu_msg(text):
+    """发送飞书消息"""
+    try:
+        subprocess.run(
+            ['lark-cli', 'im', '+messages-send', '--chat-id', FEISHU_CHAT_ID, '--as', 'bot', '--text', text],
+            capture_output=True, timeout=10
+        )
+    except Exception as e:
+        log(f"飞书通知失败: {e}", "WARN")
 
 
 def log(msg, level=""):
@@ -173,19 +188,23 @@ def watu_start():
     """挖图任务"""
     global stop_watu
     stop_watu = False
+    send_feishu_msg("🎮 挖图任务开始")
     try:
         while not stop_watu:
             find_and_click_path('shiyong.bmp', yuzhi=0.65, region=FULL_REGION)
             if _wait(3, lambda: stop_watu):
                 break
+        send_feishu_msg("✅ 挖图任务完成")
     except KeyboardInterrupt:
         log("挖图已终止")
+        send_feishu_msg("⚠️ 挖图任务被手动终止")
 
 
 def mijing_start():
     """秘境任务"""
     global stop_mijing
     stop_mijing = False
+    send_feishu_msg("🎮 秘境任务开始")
     try:
         while not stop_mijing:
             if find_and_click_path('jinruzhandou.bmp', yuzhi=0.55, region=FULL_REGION):
@@ -195,14 +214,17 @@ def mijing_start():
             find_and_click_path('mijingxiangyao.bmp', yuzhi=0.5, region=FULL_REGION)
             if _wait(3, lambda: stop_mijing):
                 break
+        send_feishu_msg("✅ 秘境任务完成")
     except KeyboardInterrupt:
         log("秘境已终止")
+        send_feishu_msg("⚠️ 秘境任务被手动终止")
 
 
 def yabiao_start():
     """押镖任务"""
     global stop_yabiao
     stop_yabiao = False
+    send_feishu_msg("🎮 押镖任务开始")
     try:
         while not stop_yabiao:
             if find_and_click_path('queding.bmp', region=FULL_REGION):
@@ -212,14 +234,17 @@ def yabiao_start():
             find_and_click_path('yasongbiaoyin.jpg', region=FULL_REGION)
             if _wait(3, lambda: stop_yabiao):
                 break
+        send_feishu_msg("✅ 押镖任务完成")
     except KeyboardInterrupt:
         log("押镖已终止")
+        send_feishu_msg("⚠️ 押镖任务被手动终止")
 
 
 def dati_start():
     """答题任务"""
     global stop_dati
     stop_dati = False
+    send_feishu_msg("🎮 答题任务开始")
     try:
         while not stop_dati:
             find_and_click_path('qiuzhu.bmp', region=FULL_REGION, dy=-200)
@@ -227,8 +252,10 @@ def dati_start():
             find_and_click_path('shiyong.bmp', region=FULL_REGION)
             if _wait(1, lambda: stop_dati):
                 break
+        send_feishu_msg("✅ 答题任务完成")
     except KeyboardInterrupt:
         log("答题已终止")
+        send_feishu_msg("⚠️ 答题任务被手动终止")
 
 
 def fuben_start():
@@ -236,6 +263,7 @@ def fuben_start():
     global stop_fuben
     stop_fuben = False
     ox, oy = FUBEN_REGION[0], FUBEN_REGION[1]
+    send_feishu_msg("🎮 副本任务开始")
     try:
         while not stop_fuben:
             if find_and_click_path('fubentiaoguo.bmp', yuzhi=0.65, region=FUBEN_REGION):
@@ -255,13 +283,16 @@ def fuben_start():
                     break
                 continue
             time.sleep(1)
+        send_feishu_msg("✅ 副本任务完成")
     except KeyboardInterrupt:
         log("副本已终止")
+        send_feishu_msg("⚠️ 副本任务被手动终止")
 
 
 def all_in_one():
     """一条龙：押镖 → 秘境"""
     log("══ 一条龙开始 ══")
+    send_feishu_msg("🎮 一条龙任务开始（押镖→秘境）")
     tasks = [
         ('押镖', yabiao_start),
         ('秘境', mijing_start),
@@ -272,6 +303,7 @@ def all_in_one():
         log(f"── {name} 完成 ──")
         time.sleep(2)
     log("══ 一条龙完成 ══")
+    send_feishu_msg("✅ 一条龙任务完成")
 
 
 def shimen_start(windows=None):
@@ -289,10 +321,12 @@ def shimen_start(windows=None):
     if windows is None:
         windows = [(None, None)]
 
+    send_feishu_msg("🎮 师门任务开始")
     try:
         for task_num in range(1, max_tasks + 1):
             if stop_shimen:
                 log(f"师门任务被中断，已完成 {completed} 个")
+                send_feishu_msg(f"⚠️ 师门任务中断，已完成 {completed} 个")
                 return
 
             log(f"── 师门任务 {task_num} 开始 ──")
@@ -322,11 +356,14 @@ def shimen_start(windows=None):
                 return
 
         log(f"师门任务全部完成，共 {completed} 个")
+        send_feishu_msg(f"✅ 师门任务完成，共 {completed} 个")
 
     except KeyboardInterrupt:
         log("师门已终止")
+        send_feishu_msg("⚠️ 师门任务被手动终止")
     except Exception as e:
         log(f"师门任务出错: {e}", "ERR")
+        send_feishu_msg(f"❌ 师门任务出错: {e}")
 
 
 def _shimen_click_task_icon_all_windows(windows):
@@ -447,6 +484,7 @@ def baotu_start():
     global stop_baotu
     stop_baotu = False
     max_wait = 10  # 最多等待 10 次
+    send_feishu_msg("🎮 宝图任务开始")
     try:
         for i in range(max_wait):
             if stop_baotu:
@@ -475,6 +513,7 @@ def baotu_start():
         while not stop_baotu:
             if _is_baotu_complete():
                 log("宝图任务完成！")
+                send_feishu_msg("✅ 宝图任务完成")
                 break
             # 未完成，点击 renwu_baotu（x+50, y+10）
             find_and_click(TPL['renwu_baotu'], yuzhi=0.8, dx=50, dy=10)
@@ -482,3 +521,4 @@ def baotu_start():
 
     except KeyboardInterrupt:
         log("宝图已终止")
+        send_feishu_msg("⚠️ 宝图任务被手动终止")
