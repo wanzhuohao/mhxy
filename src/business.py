@@ -330,8 +330,11 @@ def shimen_start(windows=None):
             time.sleep(2)
 
         if not first_found:
-            log("师门任务：3次未找到任务图标，跳过")
-            send_feishu_msg("✅ 师门任务完成（无任务）")
+            log("师门任务：3次未找到任务图标，进入等待结束判断")
+            send_feishu_msg("⏳ 师门任务3次未找到，进入等待结束判断")
+            # 进入等待结束的判断
+            _shimen_wait_completion_all_windows(windows, 0)
+            send_feishu_msg("✅ 师门任务完成")
             return
 
         completed = 1
@@ -523,8 +526,15 @@ def baotu_start():
             time.sleep(2)
 
         if not first_found:
-            log("宝图任务：3次未找到活动按钮，跳过")
-            send_feishu_msg("✅ 宝图任务完成（无任务）")
+            log("宝图任务：3次未找到活动按钮，进入等待结束判断")
+            send_feishu_msg("⏳ 宝图任务3次未找到，进入等待结束判断")
+            # 进入等待结束的判断
+            while not stop_baotu:
+                if _is_baotu_complete():
+                    log("宝图任务完成！")
+                    send_feishu_msg("✅ 宝图任务完成")
+                    break
+                time.sleep(30)
             return
 
         # 点击宝图任务和听听无妨
