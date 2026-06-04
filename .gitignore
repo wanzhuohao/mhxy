@@ -3,3 +3,4 @@ __pycache__/
 *.pyo
 window.json
 screen.png
+src/config.json

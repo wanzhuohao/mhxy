@@ -5,19 +5,28 @@ import numpy as np
 import random
 import os
 import subprocess
+import json
 
 pyautogui.FAILSAFE = True  # 鼠标移到左上角触发紧急停止，防止误操作
 
-# 飞书通知配置
-FEISHU_CHAT_ID = "oc_28198b42827f152e43de37e771e0341e"
+# 加载配置
+_CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+_CONFIG = {}
+if os.path.exists(_CONFIG_FILE):
+    with open(_CONFIG_FILE, 'r', encoding='utf-8') as f:
+        _CONFIG = json.load(f)
+
+FEISHU_CHAT_ID = _CONFIG.get('feishu_chat_id', '')
+LARK_CLI_PATH = _CONFIG.get('lark_cli_path', 'lark-cli')
 
 
 def send_feishu_msg(text):
     """发送飞书消息"""
+    if not FEISHU_CHAT_ID:
+        return
     try:
-        lark_cli = r"C:\Users\Administrator\AppData\Roaming\npm\lark-cli.cmd"
         subprocess.run(
-            [lark_cli, 'im', '+messages-send', '--chat-id', FEISHU_CHAT_ID, '--as', 'bot', '--text', text],
+            [LARK_CLI_PATH, 'im', '+messages-send', '--chat-id', FEISHU_CHAT_ID, '--as', 'bot', '--text', text],
             capture_output=True, timeout=10, shell=True
         )
     except Exception as e:
