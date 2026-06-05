@@ -99,6 +99,7 @@ class GameLauncherApp:
         self.task_running = {}
         self.popup_detection_running = False
         self.popup_detection_thread = None
+        self.zhuogui_count = 0
         self.popup_check_interval = 3
         self.arrange_index = 0  # 窗口轮流排列计数器
 
@@ -499,6 +500,7 @@ class GameLauncherApp:
             threading.Thread(target=self._stop_zhuogui_thread, daemon=True).start()
         else:
             self.popup_detection_running = True
+            self.zhuogui_count = 0
             self._set_btn_running('zhuogui')
             self.popup_detection_thread = threading.Thread(target=self._zhuogui_loop, daemon=True)
             self.popup_detection_thread.start()
@@ -537,7 +539,9 @@ class GameLauncherApp:
         if not (p1_ok and p2_ok):
             return
 
-        log("检测到捉鬼弹窗，执行点击流程")
+        self.zhuogui_count += 1
+        log(f"检测到捉鬼弹窗，执行点击流程 (第{self.zhuogui_count}次)")
+        business.send_feishu_msg(f"完成第{self.zhuogui_count}轮捉鬼")
         self._raw_click(511, 392)
         time.sleep(10)
         self._raw_click(707, 242)
