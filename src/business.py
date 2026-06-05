@@ -23,14 +23,19 @@ LARK_CLI_PATH = _CONFIG.get('lark_cli_path', 'lark-cli')
 def send_feishu_msg(text):
     """发送飞书消息"""
     if not FEISHU_CHAT_ID:
+        log("飞书通知跳过: 未配置 FEISHU_CHAT_ID", "WARN")
         return
     try:
-        subprocess.run(
+        result = subprocess.run(
             [LARK_CLI_PATH, 'im', '+messages-send', '--chat-id', FEISHU_CHAT_ID, '--as', 'bot', '--text', text],
             capture_output=True, timeout=10, shell=True
         )
+        if result.returncode == 0:
+            log(f"飞书通知已发送: {text}")
+        else:
+            log(f"飞书通知失败: {result.stderr.decode()}", "WARN")
     except Exception as e:
-        log(f"飞书通知失败: {e}", "WARN")
+        log(f"飞书通知异常: {e}", "WARN")
 
 
 def log(msg, level=""):
