@@ -401,34 +401,37 @@ class GameLauncherApp:
 
     def _dispatch_task(self, name, func, stop_event):
         """根据任务类型调度：独立型每窗口一个线程，组队型只在窗口 1 执行"""
-        windows = self._get_game_windows()
-        if not windows:
+        all_windows = self._get_game_windows()
+        if not all_windows:
             log("未找到游戏窗口", "WARN")
             self.task_running[name] = False
             self.root.after(0, lambda: self._set_btn_idle(name))
             return
 
-        # 根据选择筛选窗口
-        if self.selected_windows is not None:
-            valid = [i for i in sorted(self.selected_windows) if i < len(windows)]
-            if not valid:
-                log("选中的窗口不存在", "WARN")
-                self.task_running[name] = False
-                self.root.after(0, lambda: self._set_btn_idle(name))
-                return
-            windows = [windows[i] for i in valid]
-            log(f"── 窗口{'+'.join(str(i+1) for i in valid)} ──")
-        else:
-            log(f"── 全部窗口 ──")
-
-        self.task_windows[name] = set(hwnd for hwnd, _ in windows)
-
         if name in TEAM_TASKS:
-            # 组队型：只在窗口 1（队长）执行
-            hwnd, rect = windows[0]
+            # 组队型：永远在窗口 1（队长）执行，不受窗口选择影响
+            hwnd, rect = all_windows[0]
+            self.task_windows[name] = {hwnd}
+            log(f"── 窗口1（队长） ──")
             self._run_single_task(hwnd, rect, func, stop_event)
         else:
-            # 独立型：每个窗口一个线程
+            # 独立型：根据选择筛选窗口
+            if self.selected_windows is not None:
+                valid = [i for i in sorted(self.selected_windows) if i < len(all_windows)]
+                if not valid:
+                    log("选中的窗口不存在", "WARN")
+                    self.task_running[name] = False
+                    self.root.after(0, lambda: self._set_btn_idle(name))
+                    return
+                windows = [all_windows[i] for i in valid]
+                log(f"── 窗口{'+'.join(str(i+1) for i in valid)} ──")
+            else:
+                windows = all_windows
+                log(f"── 全部窗口 ──")
+
+            self.task_windows[name] = set(hwnd for hwnd, _ in windows)
+
+            # 每个窗口一个线程
             threads = []
             for hwnd, rect in windows:
                 t = threading.Thread(
