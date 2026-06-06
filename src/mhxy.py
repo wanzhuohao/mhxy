@@ -1,6 +1,5 @@
 import subprocess
 import os
-import sys
 import json
 import time
 import threading
@@ -11,6 +10,7 @@ import win32gui
 import win32con
 import win32api
 import pyautogui
+from pynput import mouse
 import business
 
 
@@ -28,40 +28,13 @@ C_BTN = "#4a6fa5"           # 普通按钮
 C_BTN_HOVER = "#5a8fd5"     # 按钮悬停
 C_BTN_STOP = "#c0392b"      # 停止按钮
 C_BTN_STOP_HOVER = "#e74c3c"
-C_BTN_SPECIAL = "#27ae60"   # 特殊按钮（一条龙等）
+C_BTN_SPECIAL = "#27ae60"   # 特殊按钮（工具类）
 C_BTN_SPECIAL_HOVER = "#2ecc71"
+C_TASK = "#d4760a"          # 任务按钮（受窗口选择影响）
+C_TASK_HOVER = "#e8941e"
 C_TEXT = "#ecf0f1"          # 文字
-C_LOG_BG = "#1e1e1e"        # 日志背景
-C_LOG_FG = "#b0b0b0"        # 日志文字
 C_BORDER = "#555555"        # 边框
 C_TITLE_BG = "#1a1a2e"      # 标题栏
-
-
-class TextRedirector:
-    """将 stdout/stderr 重定向到 tkinter Text 控件，同时保留原输出"""
-
-    def __init__(self, widget, original):
-        self.widget = widget
-        self.original = original
-
-    def write(self, text):
-        self.original.write(text)
-        if text.strip():
-            self.widget.after(0, self._append, text)
-
-    def _append(self, text):
-        self.widget.configure(state='normal')
-        if not text.endswith('\n'):
-            text += '\n'
-        self.widget.insert(tk.END, text)
-        self.widget.see(tk.END)
-        line_count = int(self.widget.index('end-1c').split('.')[0])
-        if line_count > 500:
-            self.widget.delete('1.0', f'{line_count - 400}.0')
-        self.widget.configure(state='disabled')
-
-    def flush(self):
-        self.original.flush()
 
 
 class GameLauncherApp:
@@ -97,11 +70,14 @@ class GameLauncherApp:
         ]
 
         self.task_running = {}
+        self.task_windows = {}  # 跟踪每个任务运行在哪些窗口
         self.popup_detection_running = False
         self.popup_detection_thread = None
         self.zhuogui_count = 0
         self.popup_check_interval = 3
         self.arrange_index = 0  # 窗口轮流排列计数器
+        self.selected_windows = None  # None=全部, set={0,2,4}=指定窗口
+        self.window_btns = []
 
         self._build_ui()
         self._check_launcher()
@@ -112,12 +88,12 @@ class GameLauncherApp:
             if os.path.exists(self.CONFIG_FILE):
                 with open(self.CONFIG_FILE, 'r') as f:
                     cfg = json.load(f)
-                w, h = cfg.get('width', 380), cfg.get('height', 700)
+                w, h = cfg.get('width', 380), cfg.get('height', 460)
                 x, y = cfg.get('x', 1700), cfg.get('y', 200)
                 return f"{w}x{h}+{x}+{y}"
         except Exception:
             pass
-        return "380x700+1700+200"
+        return "380x460+1700+200"
 
     def _save_geometry(self):
         """保存当前窗口位置和大小到配置文件"""
@@ -163,6 +139,40 @@ class GameLauncherApp:
             self.topmost_btn.config(text="取消置顶")
             log("窗口已置顶")
 
+    # ========== 窗口选择（多选） ==========
+
+    def _select_window(self, idx):
+        """idx: 0=全部, 1~5=切换选中"""
+        if idx == 0:
+            self.selected_windows = None
+        else:
+            win_idx = idx - 1
+            if self.selected_windows is None:
+                self.selected_windows = {win_idx}
+            elif win_idx in self.selected_windows:
+                self.selected_windows.discard(win_idx)
+                if not self.selected_windows:
+                    self.selected_windows = None
+            else:
+                self.selected_windows.add(win_idx)
+        self._update_window_btn_style()
+
+    def _update_window_btn_style(self):
+        """高亮当前选中的窗口按钮"""
+        for i, btn in enumerate(self.window_btns):
+            if i == 0:
+                active = self.selected_windows is None
+            else:
+                active = self.selected_windows is not None and (i - 1) in self.selected_windows
+            if active:
+                btn.config(bg=C_BTN_STOP, activebackground=C_BTN_STOP_HOVER)
+                btn.unbind('<Enter>')
+                btn.unbind('<Leave>')
+            else:
+                btn.config(bg=C_BTN_SPECIAL, activebackground=C_BTN_SPECIAL_HOVER)
+                btn.bind('<Enter>', lambda e, b=btn: b.config(bg=C_BTN_SPECIAL_HOVER))
+                btn.bind('<Leave>', lambda e, b=btn: b.config(bg=C_BTN_SPECIAL))
+
     # ========== 按钮工厂 ==========
 
     def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER):
@@ -206,17 +216,36 @@ class GameLauncherApp:
         self.topmost_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
         r += 1
 
-        # 组队 / 全部停止
+        # 组队 / (抓点+分辨率)
         self._make_btn(btn_frame, "组  队", self.create_team, C_BTN_SPECIAL).grid(
             row=r, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(btn_frame, "全部停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
-            row=r, column=1, padx=2, pady=1, sticky='ew')
+        tool_sub = tk.Frame(btn_frame, bg=C_BG)
+        tool_sub.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
+        tool_sub.columnconfigure(0, weight=1)
+        tool_sub.columnconfigure(1, weight=1)
+        self._make_btn(tool_sub, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
+            row=0, column=0, padx=1, pady=0, sticky='ew')
+        self._make_btn(tool_sub, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
+            row=0, column=1, padx=1, pady=0, sticky='ew')
         r += 1
 
-        # 任务按钮
+        # 窗口选择行
+        win_frame = tk.Frame(btn_frame, bg=C_BG)
+        win_frame.grid(row=r, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
+        for i in range(6):
+            win_frame.columnconfigure(i, weight=1)
+        labels = ["全部", "1", "2", "3", "4", "5"]
+        for i, label in enumerate(labels):
+            btn = self._make_btn(win_frame, label, lambda idx=i: self._select_window(idx), C_BTN_SPECIAL)
+            btn.grid(row=0, column=i, padx=1, pady=0, sticky='ew')
+            self.window_btns.append(btn)
+        self._update_window_btn_style()
+        r += 1
+
+        # 任务按钮（受窗口选择影响，橙色）
         self.task_buttons = {}
         for name, text, t_row, t_col, _ in self.TASK_DEFS:
-            btn = self._make_btn(btn_frame, text, None)
+            btn = self._make_btn(btn_frame, text, None, C_TASK, C_TASK_HOVER)
             btn.grid(row=r + t_row, column=t_col, padx=2, pady=1, sticky='ew')
             self.task_buttons[name] = btn
             self.task_running[name] = False
@@ -228,57 +257,16 @@ class GameLauncherApp:
             if name != 'zhuogui':
                 self.task_buttons[name].config(command=lambda n=name: self.toggle_task(n))
 
-        # 抓点 / 分辨率 / 一条龙
-        tool_sub = tk.Frame(btn_frame, bg=C_BG)
-        tool_sub.grid(row=r, column=0, padx=2, pady=1, sticky='ew')
-        tool_sub.columnconfigure(0, weight=1)
-        tool_sub.columnconfigure(1, weight=1)
-        self._make_btn(tool_sub, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
-            row=0, column=0, padx=1, pady=0, sticky='ew')
-        self._make_btn(tool_sub, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
-            row=0, column=1, padx=1, pady=0, sticky='ew')
-        self._make_btn(btn_frame, "一条龙", self.all_in_one, C_BTN_SPECIAL).grid(
-            row=r, column=1, padx=2, pady=1, sticky='ew')
+        # 一条龙 / 停止
+        self._make_btn(btn_frame, "一条龙", self.all_in_one, C_TASK, C_TASK_HOVER).grid(
+            row=r, column=0, padx=2, pady=1, sticky='ew')
+        self.stop_btn = self._make_btn(btn_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
+        self.stop_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
 
-        # ---- 日志区域 ----
-        log_frame = tk.Frame(main, bg=C_BORDER, bd=1)
-        log_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 2))
-
-        self.log_text = tk.Text(
-            log_frame, font=("Consolas", 9), state='disabled',
-            bg=C_LOG_BG, fg=C_LOG_FG, insertbackground=C_LOG_FG,
-            wrap='word', bd=0, padx=6, pady=4,
-            selectbackground='#4a6fa5', selectforeground=C_TEXT
-        )
-        scrollbar = tk.Scrollbar(log_frame, command=self.log_text.yview, bg=C_FRAME)
-        self.log_text.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        # 重定向
-        sys.stdout = TextRedirector(self.log_text, sys.stdout)
-        sys.stderr = TextRedirector(self.log_text, sys.stderr)
-
-    def _section_label(self, parent, text):
-        """分区小标题"""
-        tk.Label(
-            parent, text=text, font=("Microsoft YaHei", 9),
-            fg='#888888', bg=C_BG, anchor='w'
-        ).pack(fill=tk.X, padx=2, pady=(4, 1))
 
     def _check_launcher(self):
         if not os.path.exists(self.game_launcher_path):
-            self._log("[WARN] 未找到游戏启动器")
-
-    def _log(self, text):
-        """直接写入日志框（不经过 print）"""
-        self.log_text.after(0, self._log_append, text)
-
-    def _log_append(self, text):
-        self.log_text.configure(state='normal')
-        self.log_text.insert(tk.END, text + '\n')
-        self.log_text.see(tk.END)
-        self.log_text.configure(state='disabled')
+            log("[WARN] 未找到游戏启动器")
 
     # ========== 窗口枚举 ==========
 
@@ -434,7 +422,7 @@ class GameLauncherApp:
             log(f"启动{name}")
 
     def _run_task_on_all_windows(self, func, name):
-        """在所有游戏窗口上执行任务"""
+        """每个窗口一个线程，并行执行任务"""
         windows = self._get_game_windows()
         if not windows:
             log("未找到游戏窗口", "WARN")
@@ -442,29 +430,54 @@ class GameLauncherApp:
             self._set_btn_idle(name)
             return
 
-        # 师门任务：并行执行（所有窗口先点第一步，再一起点第二步）
-        if name == 'shimen':
-            try:
-                func(windows=windows)  # 传递窗口列表
-            except Exception as e:
-                log(f"师门任务执行出错: {e}", "ERR")
+        # 根据选择筛选窗口
+        if self.selected_windows is not None:
+            valid = [i for i in sorted(self.selected_windows) if i < len(windows)]
+            if not valid:
+                log("选中的窗口不存在", "WARN")
+                self.task_running[name] = False
+                self._set_btn_idle(name)
+                return
+            windows = [windows[i] for i in valid]
+            log(f"── 窗口{'+'.join(str(i+1) for i in valid)} ──")
         else:
-            # 其他任务：顺序执行（一个窗口完成所有步骤再处理下一个）
-            for i, (hwnd, rect) in enumerate(windows):
-                if not self.task_running[name]:
-                    break
-                log(f"── 窗口{i+1}/{len(windows)} ──")
-                try:
-                    win32gui.SetForegroundWindow(hwnd)
-                    time.sleep(1)
-                    func()
-                except Exception as e:
-                    log(f"窗口{i+1}执行出错: {e}", "ERR")
-                time.sleep(2)
+            log(f"── 全部窗口 ──")
+
+        # 记录任务运行的窗口
+        self.task_windows[name] = set(hwnd for hwnd, _ in windows)
+
+        # 每个窗口一个线程，各自监控自己的矩形区域
+        threads = []
+        for hwnd, rect in windows:
+            t = threading.Thread(
+                target=self._window_task_thread,
+                args=(hwnd, rect, func, name),
+                daemon=True
+            )
+            threads.append(t)
+            t.start()
+
+        # 等待所有窗口线程完成
+        for t in threads:
+            t.join()
 
         self.task_running[name] = False
+        self.task_windows.pop(name, None)
         self.root.after(0, lambda: self._set_btn_idle(name))
-        log(f"{name}全部完成")
+        log(f"{name}完成")
+
+    def _window_task_thread(self, hwnd, rect, func, name):
+        """单个窗口的任务线程：设置窗口上下文，运行任务"""
+        try:
+            # 设置线程的窗口区域（business 函数会自动用这个区域截图和点击）
+            business.set_window_rect(rect)
+            win32gui.SetForegroundWindow(hwnd)
+            time.sleep(0.5)
+            while self.task_running[name]:
+                func()
+                break
+        except Exception as e:
+            log(f"窗口执行出错: {e}", "ERR")
 
     def _set_btn_running(self, name):
         btn = self.task_buttons[name]
@@ -476,9 +489,9 @@ class GameLauncherApp:
     def _set_btn_idle(self, name):
         btn = self.task_buttons[name]
         text = self._get_display_name(name)
-        btn.config(text=text, bg=C_BTN, activebackground=C_BTN_HOVER)
-        btn.bind('<Enter>', lambda e, b=btn: b.config(bg=C_BTN_HOVER))
-        btn.bind('<Leave>', lambda e, b=btn: b.config(bg=C_BTN))
+        btn.config(text=text, bg=C_TASK, activebackground=C_TASK_HOVER)
+        btn.bind('<Enter>', lambda e, b=btn: b.config(bg=C_TASK_HOVER))
+        btn.bind('<Leave>', lambda e, b=btn: b.config(bg=C_TASK))
 
     def _get_display_name(self, name):
         for n, text, *_ in self.TASK_DEFS:
@@ -556,61 +569,128 @@ class GameLauncherApp:
     # ========== 抓点 ==========
 
     def get_mouse_position_and_color(self):
-        try:
-            self.task_buttons['zhuogui'].config(state=tk.DISABLED)
-            self.temp_window = tk.Toplevel(self.root)
-            self.temp_window.attributes('-fullscreen', True)
-            self.temp_window.attributes('-alpha', 0.1)
-            self.temp_window.attributes('-topmost', True)
-            self.temp_window.configure(bg='white')
-            self.temp_window.bind('<Button-1>', self._on_screen_click)
-            self.temp_window.bind('<Escape>', lambda e: self._cleanup_selection())
-        except Exception as e:
-            log(f"启动选择模式出错: {e}", "ERR")
+        self.task_buttons['zhuogui'].config(state=tk.DISABLED)
+        self._capture_listener = mouse.Listener(on_click=self._on_global_click)
+        self._capture_listener.start()
 
-    def _on_screen_click(self, event):
-        try:
-            x, y = event.x_root, event.y_root
-            shot = pyautogui.screenshot()
-            color = shot.getpixel((x, y))
-            log(f"坐标: X={x}, Y={y}  颜色: RGB({color[0]}, {color[1]}, {color[2]})", "抓点")
-        finally:
-            self._cleanup_selection()
+    def _on_global_click(self, x, y, button, pressed):
+        if not pressed or button != mouse.Button.left:
+            return
+        # 停止监听
+        self._capture_listener.stop()
+        shot = pyautogui.screenshot()
+        color = shot.getpixel((x, y))
+        self.root.after(0, lambda: self._show_capture_result(x, y, color))
 
-    def _cleanup_selection(self):
-        if hasattr(self, 'temp_window') and self.temp_window.winfo_exists():
-            self.temp_window.destroy()
+    def _show_capture_result(self, x, y, color):
         self.task_buttons['zhuogui'].config(state=tk.NORMAL)
+        self.root.attributes('-topmost', True)
+        messagebox.showinfo("抓点", f"坐标: X={x}, Y={y}\n颜色: RGB({color[0]}, {color[1]}, {color[2]})", parent=self.root)
+        self.root.attributes('-topmost', False)
 
     # ========== 其他 ==========
 
     def get_window_resolution(self):
         windows = self._get_game_windows()
         if not windows:
-            log("未找到游戏窗口", "WARN")
+            messagebox.showwarning("提示", "未找到游戏窗口")
             return
         _, rect = windows[0]
         w, h = rect[2] - rect[0], rect[3] - rect[1]
-        log(f"窗口分辨率: {w}x{h}")
+        messagebox.showinfo("窗口分辨率", f"{w}x{h}")
 
     def all_in_one(self):
+        """一条龙：在选定窗口上执行 师门→宝图→挖图→秘境→押镖"""
+        windows = self._get_game_windows()
+        if not windows:
+            log("未找到游戏窗口", "WARN")
+            return
+
+        if self.selected_windows is not None:
+            valid = [i for i in sorted(self.selected_windows) if i < len(windows)]
+            if not valid:
+                log("选中的窗口不存在", "WARN")
+                return
+            windows = [windows[i] for i in valid]
+
         log("开始一条龙")
-        threading.Thread(target=business.all_in_one, daemon=True).start()
+        threading.Thread(target=self._all_in_one_thread, args=(windows,), daemon=True).start()
+
+    def _all_in_one_thread(self, windows):
+        tasks = [
+            ('师门', 'shimen_start'),
+            ('宝图', 'baotu_start'),
+            ('挖图', 'watu_start'),
+            ('秘境', 'mijing_start'),
+            ('押镖', 'yabiao_start'),
+        ]
+        business.send_feishu_msg("🎮 一条龙任务开始")
+        for task_name, func_name in tasks:
+            log(f"── {task_name} 开始 ──")
+            func = getattr(business, func_name, None)
+            if not func:
+                continue
+            if func_name == 'shimen_start':
+                try:
+                    func(windows=windows)
+                except Exception as e:
+                    log(f"{task_name}出错: {e}", "ERR")
+            else:
+                # 每个窗口一个线程，各自监控自己的区域
+                threads = []
+                for hwnd, rect in windows:
+                    t = threading.Thread(
+                        target=self._window_task_thread,
+                        args=(hwnd, rect, func, 'all_in_one'),
+                        daemon=True
+                    )
+                    threads.append(t)
+                    t.start()
+                for t in threads:
+                    t.join()
+            log(f"── {task_name} 完成 ──")
+            time.sleep(2)
+        business.send_feishu_msg("✅ 一条龙任务完成")
+        log("一条龙全部完成")
 
     def stop_all_tasks(self):
-        log("停止所有任务")
+        """停止选中窗口上的任务"""
+        windows = self._get_game_windows()
+
+        # 确定要停哪些窗口的 hwnd
+        if self.selected_windows is not None and windows:
+            selected_hwnds = set()
+            for i in sorted(self.selected_windows):
+                if i < len(windows):
+                    selected_hwnds.add(windows[i][0])
+            if not selected_hwnds:
+                selected_hwnds = None  # 全停
+        else:
+            selected_hwnds = None  # 全停
+
+        # 捉鬼
         if self.popup_detection_running:
-            self.popup_detection_running = False
-            if self.popup_detection_thread and self.popup_detection_thread.is_alive():
-                self.popup_detection_thread.join(timeout=1)
-            self._set_btn_idle('zhuogui')
+            if selected_hwnds is None:
+                self.popup_detection_running = False
+                if self.popup_detection_thread and self.popup_detection_thread.is_alive():
+                    self.popup_detection_thread.join(timeout=1)
+                self._set_btn_idle('zhuogui')
 
-        business.stop_all()
-
-        for name in self.task_running:
+        # 其他任务
+        for name in list(self.task_running):
+            if not self.task_running[name]:
+                continue
+            if selected_hwnds is not None:
+                task_wins = self.task_windows.get(name, set())
+                if not task_wins & selected_hwnds:
+                    continue  # 该任务不在选中窗口上
             self.task_running[name] = False
+            self.task_windows.pop(name, None)
             if name in self.task_buttons:
                 self._set_btn_idle(name)
+
+        business.stop_all()
+        log("停止完成")
 
 
 if __name__ == "__main__":
