@@ -1,0 +1,175 @@
+"""截图、模板匹配、安全点击、重试"""
+
+import mss
+import cv2
+import numpy as np
+import os
+import time
+import random
+
+from context import get_window_rect, safe_click
+from notify import send_feishu_msg
+
+_sct = mss.mss()
+_TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
+
+
+def log(msg, level=""):
+    """带时间戳的日志"""
+    ts = time.strftime("%H:%M")
+    prefix = f"[{ts}]" if not level else f"[{ts} {level}]"
+    print(f"{prefix} {msg}")
+
+
+# ========== 模板预加载 ==========
+
+def _load(path):
+    """加载灰度模板，失败时打印警告"""
+    full = os.path.join(_TEMPLATE_DIR, path)
+    tpl = cv2.imread(full, cv2.IMREAD_GRAYSCALE)
+    if tpl is None:
+        log(f"模板加载失败: {path}", "WARN")
+    return tpl
+
+
+TPL = {
+    'fubentiaoguo':   _load('fuben/fubentiaoguo.bmp'),
+    'jinruzhandou':   _load('mijing/jinruzhandou.bmp'),
+    'mijingxiangyao': _load('mijing/mijingxiangyao.bmp'),
+    'queding':        _load('common/queding.bmp'),
+    'yasongbiaoyin':  _load('yabiao/yasongbiaoyin.jpg'),
+    'qiuzhu':         _load('dati/qiuzhu.bmp'),
+    'qiuzhu2':        _load('dati/qiuzhu2.bmp'),
+    'shiyong':        _load('common/shiyong.bmp'),
+    'renwu':          _load('common/renwu.bmp'),
+    'shimenrenwu':    _load('shimen/shimenrenwu.bmp'),
+    'quwancheng':     _load('shimen/quwancheng.bmp'),
+    'shimen_complete': _load('shimen/shimen_complete.bmp'),
+    'shimen_confirm':  _load('shimen/shimen_confirm.bmp'),
+    'shimen_x':        _load('shimen/shimen_x.bmp'),
+    'huodong':        _load('common/huodong.bmp'),
+    'baoturenwu':     _load('baotu/baoturenwu.bmp'),
+    'tingtingwufang': _load('baotu/tingtingwufang.bmp'),
+    'renwu_baotu':    _load('baotu/renwu_baotu.bmp'),
+}
+
+# 宝图搜索区域
+BAOTU_REGION = (0, 0, 2600, 300)
+# 副本区域
+FUBEN_REGION = (0, 0, 2600, 1440)
+
+
+# ========== 截图 + 匹配 ==========
+
+def _screenshot_gray(region=None):
+    """mss 截图，自动使用线程窗口区域"""
+    if region is None:
+        region = get_window_rect()
+    if region:
+        monitor = {"left": region[0], "top": region[1],
+                   "width": region[2], "height": region[3]}
+    else:
+        monitor = _sct.monitors[0]
+    shot = _sct.grab(monitor)
+    arr = np.array(shot)[:, :, :3]
+    return cv2.cvtColor(arr, cv2.COLOR_BGR2GRAY)
+
+
+def _match(template, screenshot_gray):
+    """模板匹配，返回 (max_val, max_loc)"""
+    result = cv2.matchTemplate(screenshot_gray, template, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
+    return max_val, max_loc
+
+
+def find_pic(template, yuzhi=0.8, region=None):
+    """查找模板，返回中心坐标 (x, y) 或 False"""
+    if region is None:
+        region = get_window_rect()
+    shot = _screenshot_gray(region)
+    max_val, max_loc = _match(template, shot)
+    if max_val >= yuzhi:
+        cx = max_loc[0] + template.shape[1] // 2 + (region[0] if region else 0)
+        cy = max_loc[1] + template.shape[0] // 2 + (region[1] if region else 0)
+        return (cx, cy)
+    return False
+
+
+def find_and_click(template, yuzhi=0.8, region=None, dx=0, dy=0, rand=5):
+    """查找模板并点击中心，返回 True/False"""
+    pos = find_pic(template, yuzhi, region)
+    if pos:
+        x = pos[0] + dx + random.randint(-rand, rand)
+        y = pos[1] + dy + random.randint(-rand, rand)
+        safe_click(x, y)
+        log(f"({x},{y})", "点")
+        return True
+    return False
+
+
+def find_and_click_path(template_path, yuzhi=0.8, region=None, dx=0, dy=0, rand=5):
+    """按文件名查找并点击"""
+    name = os.path.splitext(os.path.basename(template_path))[0]
+    tpl = TPL.get(name)
+    if tpl is None:
+        tpl = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
+        if tpl is None:
+            log(f"无法加载: {template_path}", "ERR")
+            return False
+    return find_and_click(tpl, yuzhi, region, dx, dy, rand)
+
+
+def find_all(template, yuzhi=0.8, region=None):
+    """查找模板的所有匹配位置"""
+    if region is None:
+        region = get_window_rect()
+    shot = _screenshot_gray(region)
+    result = cv2.matchTemplate(shot, template, cv2.TM_CCOEFF_NORMED)
+    locations = np.where(result >= yuzhi)
+    points = []
+    h, w = template.shape[:2]
+    for pt_y, pt_x in zip(*locations):
+        cx = pt_x + w // 2 + (region[0] if region else 0)
+        cy = pt_y + h // 2 + (region[1] if region else 0)
+        if not any(abs(cx - px) < w // 2 and abs(cy - py) < h // 2 for px, py in points):
+            points.append((cx, cy))
+    return points
+
+
+def find_all_path(template_path, yuzhi=0.8, region=None):
+    """按文件名查找所有匹配位置"""
+    name = os.path.splitext(os.path.basename(template_path))[0]
+    tpl = TPL.get(name)
+    if tpl is None:
+        tpl = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
+        if tpl is None:
+            return []
+    return find_all(tpl, yuzhi, region)
+
+
+# ========== 重试 ==========
+
+def _retry(func, max_retries=3, delay=2, label=""):
+    """单步重试，失败重试 N 次"""
+    for i in range(max_retries):
+        try:
+            result = func()
+            if result is not False and result is not None:
+                return result
+        except Exception as e:
+            log(f"{label}第{i+1}次失败: {e}", "WARN")
+        if i < max_retries - 1:
+            time.sleep(delay)
+    if label:
+        log(f"{label}重试{max_retries}次均失败", "WARN")
+    return False
+
+
+def _wait(seconds, stop_event):
+    """可中断等待，返回 True 表示被停止"""
+    return stop_event.wait(timeout=seconds)
+
+
+def stop_all():
+    """兼容旧接口，不再需要（各任务用自己的 stop_event）"""
+    pass
