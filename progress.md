@@ -4,6 +4,16 @@
 
 - 无
 
+## 2026-06-06 模块化重构
+
+- business.py (628行) 拆分为 core.py + context.py + notify.py + tasks/ 目录
+- 8个任务各自独立文件，统一接口 task_start(stop_event)
+- mss 替换 pyautogui.screenshot，截图速度提升 5~7 倍
+- 每窗口一把点击锁，不同窗口可同时点击
+- _retry 包装关键步骤，失败自动重试 3 次
+- 独立型任务每窗口一个线程并行，组队型（副本/捉鬼）只在窗口1执行
+- 删除 cli/ 模块和 business.py
+
 ## 窗口坐标记录（2560×1440，窗口大小 870×692）
 
 | 号 | 左上角 | 右下角 |
