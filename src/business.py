@@ -6,8 +6,41 @@ import random
 import os
 import subprocess
 import json
+import threading
 
 pyautogui.FAILSAFE = True  # 鼠标移到左上角触发紧急停止，防止误操作
+
+# ========== 线程上下文 & 点击锁 ==========
+_click_lock = threading.Lock()       # 全局点击锁，保证同一时间只有一个线程点击
+_thread_ctx = threading.local()      # 线程本地存储，每个线程独立的窗口区域
+
+
+def set_window_rect(rect):
+    """设置当前线程关联的窗口区域 (x, y, w, h)，截图和点击都限定在此范围"""
+    _thread_ctx.window_rect = rect
+
+
+def get_window_rect():
+    """获取当前线程的窗口区域，None 表示不限制"""
+    return getattr(_thread_ctx, 'window_rect', None)
+
+
+def safe_click(x, y):
+    """带锁的点击，避免多线程同时操作鼠标"""
+    with _click_lock:
+        pyautogui.click(x, y)
+
+
+def run_in_window(hwnd, rect, func, stop_flag):
+    """在指定窗口上下文中运行任务函数（每个窗口一个线程调用此方法）"""
+    set_window_rect(rect)
+    import win32gui, win32con
+    try:
+        win32gui.SetForegroundWindow(hwnd)
+        time.sleep(0.5)
+        func()
+    except Exception as e:
+        log(f"窗口执行出错: {e}", "ERR")
 
 # 加载配置
 _CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
@@ -89,7 +122,11 @@ BAOTU_REGION = (0, 0, 2600, 300)
 # ========== 核心匹配 ==========
 
 def _screenshot_gray(region=None):
-    """截屏并转灰度 numpy 数组"""
+    """截屏并转灰度 numpy 数组，自动使用线程窗口区域"""
+    if region is None:
+        wr = get_window_rect()
+        if wr is not None:
+            region = wr
     shot = pyautogui.screenshot(region=region)
     return cv2.cvtColor(np.array(shot), cv2.COLOR_RGB2GRAY)
 
@@ -102,7 +139,10 @@ def _match(template, screenshot_gray):
 
 
 def find_pic(template, yuzhi=0.8, region=None):
-    """查找模板，返回中心坐标 (x, y) 或 False"""
+    """查找模板，返回中心坐标 (x, y) 或 False。自动使用线程窗口区域偏移"""
+    wr = get_window_rect()
+    if region is None and wr is not None:
+        region = wr
     shot = _screenshot_gray(region)
     max_val, max_loc = _match(template, shot)
     if max_val >= yuzhi:
@@ -118,7 +158,7 @@ def find_and_click(template, yuzhi=0.8, region=None, dx=0, dy=0, rand=5):
     if pos:
         x = pos[0] + dx + random.randint(-rand, rand)
         y = pos[1] + dy + random.randint(-rand, rand)
-        pyautogui.click(x, y)
+        safe_click(x, y)
         log(f"({x},{y})", "点")
         return True
     return False
@@ -138,6 +178,10 @@ def find_and_click_path(template_path, yuzhi=0.8, region=None, dx=0, dy=0, rand=
 
 def find_all(template, yuzhi=0.8, region=None):
     """查找模板的所有匹配位置，返回 [(cx, cy), ...]"""
+    if region is None:
+        wr = get_window_rect()
+        if wr is not None:
+            region = wr
     shot = _screenshot_gray(region)
     result = cv2.matchTemplate(shot, template, cv2.TM_CCOEFF_NORMED)
     locations = np.where(result >= yuzhi)
@@ -281,11 +325,11 @@ def fuben_start():
                 if _wait(5, lambda: stop_fuben):
                     break
                 dx, dy = random.randint(-5, 5), random.randint(-5, 5)
-                pyautogui.click(ox + 744 + dx, oy + 190 + dy)
+                safe_click(ox + 744 + dx, oy + 190 + dy)
                 if _wait(5, lambda: stop_fuben):
                     break
                 dx, dy = random.randint(-5, 5), random.randint(-5, 5)
-                pyautogui.click(ox + 638 + dx, oy + 510 + dy)
+                safe_click(ox + 638 + dx, oy + 510 + dy)
                 if _wait(3, lambda: stop_fuben):
                     break
                 continue
@@ -300,12 +344,15 @@ def fuben_start():
 
 
 def all_in_one():
-    """一条龙：押镖 → 秘境"""
+    """一条龙：师门 → 宝图 → 挖图 → 秘境 → 押镖"""
     log("══ 一条龙开始 ══")
-    send_feishu_msg("🎮 一条龙任务开始（押镖→秘境）")
+    send_feishu_msg("🎮 一条龙任务开始（师门→宝图→挖图→秘境→押镖）")
     tasks = [
-        ('押镖', yabiao_start),
+        ('师门', shimen_start),
+        ('宝图', baotu_start),
+        ('挖图', watu_start),
         ('秘境', mijing_start),
+        ('押镖', yabiao_start),
     ]
     for name, func in tasks:
         log(f"── {name} 开始 ──")
@@ -419,6 +466,7 @@ def _shimen_click_task_icon_all_windows(windows):
             # 切换到窗口
             if hwnd is not None:
                 try:
+                    set_window_rect(rect)
                     win32gui.SetForegroundWindow(hwnd)
                     time.sleep(0.5)
                 except Exception:
@@ -448,6 +496,7 @@ def _shimen_click_complete_all_windows(windows):
             # 切换到窗口
             if hwnd is not None:
                 try:
+                    set_window_rect(rect)
                     win32gui.SetForegroundWindow(hwnd)
                     time.sleep(0.5)
                 except Exception:
@@ -489,6 +538,7 @@ def _shimen_wait_completion_all_windows(windows, task_num):
             # 切换到窗口
             if hwnd is not None:
                 try:
+                    set_window_rect(rect)
                     win32gui.SetForegroundWindow(hwnd)
                     time.sleep(0.3)
                 except Exception:
