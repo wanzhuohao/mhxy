@@ -42,7 +42,7 @@ def watu_start(stop_event):
     # 点击找到的包裹
     for i, (cx, cy, val) in found_baoguo:
         safe_click(cx, cy)
-        log(f"窗口{i+1} 点击包裹 ({cx},{cy})")
+        log(f"窗口{i+1} [baoguo] 点击包裹 ({cx},{cy})")
         time.sleep(0.3)
 
     if _wait(3, stop_event):
@@ -55,7 +55,7 @@ def watu_start(stop_event):
         r = _match_in_region(shot, TPL['zhengli'], rect)
         if r:
             safe_click(r[0], r[1])
-            log(f"窗口{i+1} 点击整理 ({r[0]},{r[1]})")
+            log(f"窗口{i+1} [zhengli] 点击整理 ({r[0]},{r[1]})")
         else:
             log(f"窗口{i+1}：未找到整理按钮", "WARN")
             missing.append(f"窗口{i+1}")
@@ -99,7 +99,7 @@ def watu_start(stop_event):
             r = _match_in_region(shot, TPL['shiyong'], rect, yuzhi=0.65)
             if r:
                 safe_click(r[0], r[1])
-                log(f"窗口{i+1} 点击使用 ({r[0]},{r[1]})")
+                log(f"窗口{i+1} [shiyong] 点击使用 ({r[0]},{r[1]})")
                 found_any = True
                 time.sleep(0.3)
 

@@ -29,7 +29,7 @@ def mijing_start(stop_event):
         # 点击找到的活动
         for i, (cx, cy, val) in found_activity:
             safe_click(cx, cy)
-            log(f"窗口{i+1} 点击活动 ({cx},{cy})")
+            log(f"窗口{i+1} [huodong] 点击活动 ({cx},{cy})")
             time.sleep(0.3)
 
         if _wait(3, stop_event):
@@ -48,7 +48,9 @@ def mijing_start(stop_event):
 
         # 未找到的窗口点击重试
         if missing:
-            shot = _retry_click_activity(missing, stop_event) or shot
+            result = _retry_click_activity(missing, stop_event)
+            if result is not None:
+                shot = result
             still_missing = []
             for i in missing:
                 r = _match_in_region(shot, TPL['huodongmijing'], REGIONS[i])
@@ -60,7 +62,7 @@ def mijing_start(stop_event):
 
         for i, r in found_mijing:
             safe_click(r[0] + 130, r[1] + 10)
-            log(f"窗口{i+1} 点击秘境右边 ({r[0]+130},{r[1]+10})")
+            log(f"窗口{i+1} [huodongmijing] 点击秘境右边 ({r[0]+130},{r[1]+10})")
             time.sleep(0.3)
 
         if missing:
@@ -82,7 +84,7 @@ def mijing_start(stop_event):
                 r = _match_in_region(shot, TPL['yaozuodeshi'], rect)
                 if r:
                     safe_click(r[0], r[1])
-                    log(f"窗口{i+1} 点击妖族的事 ({r[0]},{r[1]})")
+                    log(f"窗口{i+1} [yaozuodeshi] 点击妖族的事 ({r[0]},{r[1]})")
                     found = True
                     time.sleep(0.3)
             if found:
@@ -99,7 +101,7 @@ def mijing_start(stop_event):
             r = _match_in_region(shot, TPL['jixu'], rect)
             if r:
                 safe_click(r[0], r[1])
-                log(f"窗口{i+1} 点击继续 ({r[0]},{r[1]})")
+                log(f"窗口{i+1} [jixu] 点击继续 ({r[0]},{r[1]})")
             time.sleep(0.3)
 
         if _wait(2, stop_event):
@@ -119,7 +121,7 @@ def mijing_start(stop_event):
                 continue
             r = _match_in_region(shot, TPL['shibai'], rect)
             if r:
-                log(f"窗口{i+1} 秘境已完成（检测到失败标志）")
+                log(f"窗口{i+1} [shibai] 秘境已完成")
                 done_windows.add(i)
 
         if len(done_windows) == len(REGIONS):
@@ -128,7 +130,7 @@ def mijing_start(stop_event):
                 r = _match_in_region(shot, TPL['shibai'], rect)
                 if r:
                     safe_click(r[0], r[1])
-                    log(f"窗口{i+1} 点击失败标志 ({r[0]},{r[1]})")
+                    log(f"窗口{i+1} [shibai] 点击失败标志 ({r[0]},{r[1]})")
                     time.sleep(0.3)
 
             # 点击5个离开
@@ -139,7 +141,7 @@ def mijing_start(stop_event):
                 r = _match_in_region(shot, TPL['likai'], rect)
                 if r:
                     safe_click(r[0], r[1])
-                    log(f"窗口{i+1} 点击离开 ({r[0]},{r[1]})")
+                    log(f"窗口{i+1} [likai] 点击离开 ({r[0]},{r[1]})")
                     time.sleep(0.3)
             break
 
@@ -148,10 +150,10 @@ def mijing_start(stop_event):
         for i, rect in enumerate(REGIONS):
             if i in done_windows:
                 continue
-            r = _match_in_region(shot, TPL['jinruzhandou'], rect, yuzhi=0.55)
+            r = _match_in_region(shot, TPL['jinruzhandou'], rect, yuzhi=0.75)
             if r:
                 safe_click(r[0], r[1])
-                log(f"窗口{i+1} 点击进入战斗 ({r[0]},{r[1]})")
+                log(f"窗口{i+1} [jinruzhandou] 点击进入战斗 ({r[0]},{r[1]})")
                 found = True
                 time.sleep(0.3)
 
@@ -164,7 +166,7 @@ def mijing_start(stop_event):
                 r = _match_in_region(shot, TPL['mijingxiangyao'], rect, yuzhi=0.5)
                 if r:
                     safe_click(r[0], r[1])
-                    log(f"窗口{i+1} 点击秘境降妖 ({r[0]},{r[1]})")
+                    log(f"窗口{i+1} [mijingxiangyao] 点击秘境降妖 ({r[0]},{r[1]})")
                     found = True
                     time.sleep(0.3)
 
