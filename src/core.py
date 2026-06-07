@@ -115,7 +115,42 @@ def _match(template, screenshot_gray):
     """模板匹配，返回 (max_val, max_loc)"""
     result = cv2.matchTemplate(screenshot_gray, template, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(result)
-    return max_val, max_loc
+
+
+def _match_in_region(shot_full, template, region, yuzhi=0.8):
+    """在全屏截图的指定区域内匹配模板，返回中心绝对坐标或 None"""
+    x0, y0, x1, y1 = region
+    crop = shot_full[y0:y1, x0:x1]
+    max_val, max_loc = _match(template, crop)
+    if max_val >= yuzhi:
+        cx = max_loc[0] + template.shape[1] // 2 + x0
+        cy = max_loc[1] + template.shape[0] // 2 + y0
+        return (cx, cy, max_val)
+    return None
+
+
+def _retry_click_activity(missing_indices, stop_event):
+    """对未找到按钮的窗口点击 (132,188) 重试，返回新截图"""
+    if not missing_indices:
+        return None
+    for i in missing_indices:
+        x0, y0 = REGIONS[i][0], REGIONS[i][1]
+        safe_click(x0 + 132, y0 + 188)
+        log(f"窗口{i+1} 点击重试 ({x0+132},{y0+188})")
+        time.sleep(0.3)
+    if _wait(3, stop_event):
+        return None
+    return _screenshot_gray(full=True)
+
+
+# 5个窗口区域
+REGIONS = [
+    (0, 0, 870, 692),
+    (853, 0, 1723, 692),
+    (1706, 0, 2576, 692),
+    (0, 690, 870, 1382),
+    (853, 690, 1723, 1382),
+]
 
 
 def _resolve_region(region):

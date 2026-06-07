@@ -4,7 +4,7 @@ import time
 from core import log, _screenshot_gray, TPL, _wait
 from context import safe_click
 from notify import send_feishu_msg
-from tasks.shimen import REGIONS, _match_in_region, _retry_click_activity
+from core import _match_in_region, _retry_click_activity, REGIONS
 
 
 def yabiao_start(stop_event):
