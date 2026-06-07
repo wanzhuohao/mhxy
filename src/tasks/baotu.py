@@ -14,13 +14,16 @@ def baotu_start(stop_event):
     # 第1步：全屏截图，找5个窗口的活动按钮
     shot = _screenshot_gray()
     found_activity = []
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['huodong'], rect)
         if r:
             found_activity.append((i, r))
         else:
             log(f"窗口{i+1}：未找到活动按钮", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到活动按钮")
+            missing.append(f"窗口{i+1}")
+    if missing:
+        send_feishu_msg(f"⚠️ 宝图：{','.join(missing)} 未找到活动按钮")
 
     if not found_activity:
         log("所有窗口都未找到活动按钮", "WARN")
@@ -38,13 +41,16 @@ def baotu_start(stop_event):
     # 第2步：全屏截图，找宝图任务按钮
     shot = _screenshot_gray()
     found_baotu = []
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.75)
         if r:
             found_baotu.append((i, r))
         else:
             log(f"窗口{i+1}：未找到宝图任务", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到宝图任务")
+            missing.append(f"窗口{i+1}")
+    if missing:
+        send_feishu_msg(f"⚠️ 宝图：{','.join(missing)} 未找到宝图任务")
 
     # 点击宝图任务右边
     for i, (cx, cy, val) in found_baotu:
@@ -58,13 +64,16 @@ def baotu_start(stop_event):
     # 第3步：全屏截图，找听听无妨并点击
     shot = _screenshot_gray()
     found_tingting = []
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['tingtingwufang'], rect, yuzhi=0.75)
         if r:
             found_tingting.append((i, r))
         else:
             log(f"窗口{i+1}：未找到听听无妨", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到听听无妨")
+            missing.append(f"窗口{i+1}")
+    if missing:
+        send_feishu_msg(f"⚠️ 宝图：{','.join(missing)} 未找到听听无妨")
 
     for i, (cx, cy, val) in found_tingting:
         safe_click(cx, cy)

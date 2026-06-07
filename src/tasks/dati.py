@@ -66,13 +66,74 @@ def _dati_keju(stop_event):
 
 
 def _dati_sanjie(stop_event):
-    """三界答题"""
+    """三界答题：全屏截图 → 点活动 → 点三界右边 → 求助/使用"""
     log("三界答题开始")
+
+    # 第1步：全屏截图，找活动按钮
+    shot = _screenshot_gray()
+    missing = []
+    for i, rect in enumerate(REGIONS):
+        r = _match_in_region(shot, TPL['huodong'], rect)
+        if r:
+            safe_click(r[0], r[1])
+            log(f"窗口{i+1} 点击活动 ({r[0]},{r[1]})")
+        else:
+            log(f"窗口{i+1}：未找到活动按钮", "WARN")
+            missing.append(f"窗口{i+1}")
+        time.sleep(0.3)
+    if missing:
+        send_feishu_msg(f"⚠️ 三界答题：{','.join(missing)} 未找到活动按钮")
+
+    if _wait(3, stop_event):
+        return
+
+    # 第2步：全屏截图，找三界按钮并点击右边
+    shot = _screenshot_gray()
+    missing = []
+    for i, rect in enumerate(REGIONS):
+        r = _match_in_region(shot, TPL['sanjie'], rect)
+        if r:
+            safe_click(r[0] + 130, r[1] + 10)
+            log(f"窗口{i+1} 点击三界右边 ({r[0]+130},{r[1]+10})")
+        else:
+            log(f"窗口{i+1}：未找到三界按钮", "WARN")
+            missing.append(f"窗口{i+1}")
+        time.sleep(0.3)
+    if missing:
+        send_feishu_msg(f"⚠️ 三界答题：{','.join(missing)} 未找到三界按钮")
+
+    if _wait(2, stop_event):
+        return
+
+    # 第3步：循环找求助/使用，检测结束标志
+    done_windows = set()
     while not stop_event.is_set():
         shot = _screenshot_gray()
 
+        # 检测结束标志
+        for i, rect in enumerate(REGIONS):
+            if i in done_windows:
+                continue
+            r = _match_in_region(shot, TPL['jieshu'], rect)
+            if r:
+                log(f"窗口{i+1} 三界答题已完成")
+                done_windows.add(i)
+
+        if len(done_windows) == len(REGIONS):
+            log("三界答题全部完成，点击关闭")
+            shot = _screenshot_gray()
+            for i, rect in enumerate(REGIONS):
+                r = _match_in_region(shot, TPL['dati_x'], rect)
+                if r:
+                    safe_click(r[0], r[1])
+                    log(f"窗口{i+1} 点击关闭 ({r[0]},{r[1]})")
+                    time.sleep(0.3)
+            break
+
         # 找求助1并点击（偏移 dy=-200）
         for i, rect in enumerate(REGIONS):
+            if i in done_windows:
+                continue
             r = _match_in_region(shot, TPL['qiuzhu'], rect)
             if r:
                 safe_click(r[0], r[1] - 200)
@@ -82,6 +143,8 @@ def _dati_sanjie(stop_event):
         # 找求助2并点击（偏移 dy=-200）
         shot = _screenshot_gray()
         for i, rect in enumerate(REGIONS):
+            if i in done_windows:
+                continue
             r = _match_in_region(shot, TPL['qiuzhu2'], rect)
             if r:
                 safe_click(r[0], r[1] - 200)
@@ -91,6 +154,8 @@ def _dati_sanjie(stop_event):
         # 找使用并点击
         shot = _screenshot_gray()
         for i, rect in enumerate(REGIONS):
+            if i in done_windows:
+                continue
             r = _match_in_region(shot, TPL['shiyong'], rect, yuzhi=0.65)
             if r:
                 safe_click(r[0], r[1])
