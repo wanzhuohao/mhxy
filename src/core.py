@@ -51,6 +51,12 @@ TPL = {
     'baoturenwu':     _load('baotu/baoturenwu.bmp'),
     'tingtingwufang': _load('baotu/tingtingwufang.bmp'),
     'renwu_baotu':    _load('baotu/renwu_baotu.bmp'),
+    'putong':         _load('fuben/putong.bmp'),
+    'xuanzefuben':    _load('fuben/xuanzefuben.bmp'),
+    'jinru':          _load('fuben/jinru.bmp'),
+    'yiwancheng':     _load('fuben/yiwancheng.bmp'),
+    'zhuoguirenwu':   _load('zhuogui/zhuoguirenwu.bmp'),
+    'zhuogui':        _load('zhuogui/zhuogui.bmp'),
 }
 
 # 宝图搜索区域
