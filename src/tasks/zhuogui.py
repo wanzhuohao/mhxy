@@ -37,9 +37,11 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
     log(f"窗口1 rect={w1_rect}")
 
     # 第1步：点活动
-    from core import TPL, find_and_click, _retry, _wait
+    from core import TPL, find_pic, find_and_click, _retry, _wait
+    entered_from_activity = False
     if find_and_click(TPL['huodong'], region=w1_rect):
         log("点击活动")
+        entered_from_activity = True
         if _wait(2, stop_event):
             return
 
@@ -50,20 +52,19 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
         if _wait(2, stop_event):
             return
     else:
-        log("未找到活动按钮，跳过准备步骤")
+        log("未找到活动按钮，直接检测完成图")
 
     count = 0
     first_round = True
     try:
         while not stop_event.is_set():
-            if first_round:
-                # 第一次从活动进入，不检测颜色
+            if first_round and entered_from_activity:
+                # 从活动进入，第一次不检测
                 first_round = False
             else:
-                # 后续检测颜色等待弹窗
-                p1_ok, _ = _check_color_at(ox + 514, oy + 346, (163, 124, 83))
-                p2_ok, _ = _check_color_at(ox + 511, oy + 392, (243, 202, 105))
-                if not (p1_ok and p2_ok):
+                # 检测完成图片
+                first_round = False
+                if not find_pic(TPL['zhuogui_wancheng'], yuzhi=0.8, region=w1_rect):
                     if stop_event.wait(3):
                         break
                     continue
@@ -73,7 +74,15 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
             send_feishu_msg(f"完成第{count}轮捉鬼")
             if count >= rounds:
                 log(f"捉鬼{rounds}轮已完成")
+                # 最后一轮点 (350, 392) 退出
+                safe_click(ox + 350, oy + 392)
                 send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
+                stop_event.set()
+                break
+
+            # 点击弹窗
+            safe_click(ox + 511, oy + 392)
+            if stop_event.wait(1):
                 break
 
             # 等10秒

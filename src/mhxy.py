@@ -349,7 +349,7 @@ class GameLauncherApp:
         self._click_at(first_rect, 18 * 1.5, 313 * 1.5)
         time.sleep(1)
 
-        friend_ys = [241, 277, 317, 356]
+        friend_ys = [241, 277, 317, 350]
         for fy in friend_ys:
             self._click_at(first_rect, 223 * 1.5, fy * 1.5)
             time.sleep(0.5)
