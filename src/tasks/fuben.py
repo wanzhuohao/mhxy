@@ -2,7 +2,7 @@
 
 import random
 import threading
-from core import log, find_pic, find_and_click, find_all, find_and_click_path, TPL, _wait, _retry
+from core import log, find_pic, find_and_click, find_all, find_and_click_path, TPL, _wait, _retry, get_game_windows
 from context import safe_click, get_window_rect
 from notify import send_feishu_msg
 
@@ -12,7 +12,6 @@ _jinru_index = 0  # 进入按钮轮流计数
 def fuben_start(stop_event: threading.Event):
     """副本：跳过剧情、确定、战斗坐标"""
     log("副本任务开始")
-    send_feishu_msg("🎮 副本任务开始")
 
     # 第1步：点活动（没找到则跳过，直接进主循环）
     if find_and_click(TPL['huodong']):
@@ -61,18 +60,8 @@ def fuben_start(stop_event: threading.Event):
     else:
         log("未找到活动按钮，跳过准备步骤，直接进副本主循环")
 
-    # 固定取屏幕左上角的窗口1
-    import win32gui
-    windows = []
-    def _enum(hwnd, _):
-        if win32gui.IsWindowVisible(hwnd):
-            title = win32gui.GetWindowText(hwnd)
-            if '梦幻西游' in title or 'MyLauncher' in title:
-                rect = win32gui.GetWindowRect(hwnd)
-                windows.append((hwnd, rect))
-    win32gui.EnumWindows(_enum, None)
-    windows.sort(key=lambda w: (w[1][1], w[1][0]))
-    rect = windows[0][1]
+    # 固定窗口1坐标（2560×1440分辨率，窗口870×692）
+    rect = (0, 0, 870, 692)
     ox, oy = rect[0], rect[1]
     try:
         while not stop_event.is_set():
@@ -95,7 +84,7 @@ def fuben_start(stop_event: threading.Event):
                 continue
             if _wait(1, stop_event):
                 break
-        send_feishu_msg("✅ 副本任务完成")
+        log("副本任务完成")
     except Exception as e:
         log(f"副本任务异常: {e}", "ERR")
         send_feishu_msg(f"❌ 副本任务异常: {e}")

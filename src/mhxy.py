@@ -13,16 +13,10 @@ import pyautogui
 from pynput import mouse
 
 import core
+from core import log
 import context
 import notify
 from tasks import TASK_FUNCS, INDEPENDENT_TASKS, TEAM_TASKS
-
-
-def log(msg, level=""):
-    """带时间戳的日志"""
-    ts = time.strftime("%H:%M")
-    prefix = f"[{ts}]" if not level else f"[{ts} {level}]"
-    print(f"{prefix} {msg}")
 
 
 # ========== 颜色主题 ==========
@@ -118,7 +112,7 @@ class GameLauncherApp:
 
     def _toggle_topmost(self):
         """切换窗口置顶"""
-        current = self.root.attributes('-topmost')
+        current = self.root.attributes('-topmost') in (True, 'true', 1)
         self.root.attributes('-topmost', not current)
         if current:
             self.topmost_btn.config(text="置顶")
@@ -217,6 +211,11 @@ class GameLauncherApp:
             row=r, column=1, padx=2, pady=1, sticky='ew')
         r += 1
 
+        # 解散队伍
+        self._make_btn(btn_frame, "解散队伍", self.disband_team, C_BTN_SPECIAL).grid(
+            row=r, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
+        r += 1
+
         # 窗口选择行
         win_frame = tk.Frame(btn_frame, bg=C_BG)
         win_frame.grid(row=r, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
@@ -252,15 +251,7 @@ class GameLauncherApp:
     # ========== 窗口枚举 ==========
 
     def _get_game_windows(self):
-        windows = []
-        def callback(hwnd, _):
-            if win32gui.IsWindowVisible(hwnd):
-                title = win32gui.GetWindowText(hwnd)
-                if '梦幻西游' in title or 'MyLauncher' in title:
-                    rect = win32gui.GetWindowRect(hwnd)
-                    windows.append((hwnd, rect))
-        win32gui.EnumWindows(callback, None)
-        return windows
+        return core.get_game_windows()
 
     # ========== 启动游戏 ==========
 
@@ -277,7 +268,11 @@ class GameLauncherApp:
 
     def _launch_five_thread(self, need):
         self._launch_game(need)
-        time.sleep(10)
+        # 轮询等待窗口出现，最多等60秒
+        for _ in range(60):
+            if len(core.get_game_windows()) >= need:
+                break
+            time.sleep(1)
         self.arrange_game_windows()
 
     def _launch_game(self, count):
@@ -364,14 +359,40 @@ class GameLauncherApp:
                 time.sleep(0.5)
             except Exception as e:
                 log(f"处理窗口{i}出错: {e}", "ERR")
+        # 最后点击 (802, 136)
+        context.safe_click(802 + random.randint(-3, 3), 136 + random.randint(-3, 3))
         log("组队完成")
+
+    def disband_team(self):
+        """解散队伍：找队伍 → 点击操作"""
+        rect = (0, 0, 870, 692)
+        ox, oy = rect[0], rect[1]
+
+        # 找队伍图片并点击
+        if not core.find_and_click(core.TPL['duiwu'], yuzhi=0.8, region=rect):
+            log("未找到队伍按钮", "WARN")
+            return
+        log("点击队伍")
+        time.sleep(1)
+
+        # 前3次: (740,240) -> (599,299) -> (511,400)
+        for i in range(3):
+            for x, y in [(740, 240), (599, 299), (511, 400)]:
+                rx, ry = random.randint(-5, 5), random.randint(-5, 5)
+                context.safe_click(ox + x + rx, oy + y + ry)
+                time.sleep(0.5)
+        # 第4次: (740,190) -> (599,248) -> (511,400)
+        for x, y in [(740, 190), (599, 248), (511, 400)]:
+            rx, ry = random.randint(-5, 5), random.randint(-5, 5)
+            context.safe_click(ox + x + rx, oy + y + ry)
+            time.sleep(0.5)
+
+        log("解散队伍完成")
 
     def _click_at(self, rect, rel_x, rel_y, rand_x=5, rand_y=5):
         x = rect[0] + int(rel_x) + random.randint(-rand_x, rand_x)
         y = rect[1] + int(rel_y) + random.randint(-rand_y, rand_y)
-        win32api.SetCursorPos((x, y))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+        context.safe_click(x, y)
 
     # ========== 任务调度 ==========
 
@@ -540,7 +561,7 @@ class GameLauncherApp:
         """一条龙：独立型任务每窗口并行，顺序执行各子任务"""
         task_order = ['shimen', 'baotu', 'watu', 'mijing', 'yabiao']
         task_names = {'shimen': '师门', 'baotu': '宝图', 'watu': '挖图', 'mijing': '秘境', 'yabiao': '押镖'}
-        notify.send_feishu_msg("🎮 一条龙任务开始")
+        log("一条龙任务开始")
         for name in task_order:
             if stop_event.is_set():
                 break
@@ -553,7 +574,7 @@ class GameLauncherApp:
             for hwnd, rect in windows:
                 t = threading.Thread(
                     target=self._run_single_task,
-                    args=(hwnd, rect, func, stop_event, rounds),
+                    args=(hwnd, rect, func, stop_event),
                     daemon=True
                 )
                 threads.append(t)
@@ -562,7 +583,7 @@ class GameLauncherApp:
                 t.join()
             log(f"── {task_names[name]} 完成 ──")
             time.sleep(2)
-        notify.send_feishu_msg("✅ 一条龙任务完成")
+        log("一条龙任务完成")
         self.task_stop_events.pop('all_in_one', None)
         log("一条龙全部完成")
 
