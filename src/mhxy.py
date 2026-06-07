@@ -70,8 +70,6 @@ class GameLauncherApp:
         self.task_stop_events = {}  # 每个任务的 stop_event
         self.task_windows = {}      # 跟踪每个任务运行在哪些窗口
         self.arrange_index = 0
-        self.selected_windows = None  # None=全部, set={0,2,4}=指定窗口
-        self.window_btns = []
 
         self._build_ui()
         self._check_launcher()
@@ -120,40 +118,6 @@ class GameLauncherApp:
         else:
             self.topmost_btn.config(text="取消置顶")
             log("窗口已置顶")
-
-    # ========== 窗口选择（多选） ==========
-
-    def _select_window(self, idx):
-        """idx: 0=全部, 1~5=切换选中"""
-        if idx == 0:
-            self.selected_windows = None
-        else:
-            win_idx = idx - 1
-            if self.selected_windows is None:
-                self.selected_windows = {win_idx}
-            elif win_idx in self.selected_windows:
-                self.selected_windows.discard(win_idx)
-                if not self.selected_windows:
-                    self.selected_windows = None
-            else:
-                self.selected_windows.add(win_idx)
-        self._update_window_btn_style()
-
-    def _update_window_btn_style(self):
-        """高亮当前选中的窗口按钮"""
-        for i, btn in enumerate(self.window_btns):
-            if i == 0:
-                active = self.selected_windows is None
-            else:
-                active = self.selected_windows is not None and (i - 1) in self.selected_windows
-            if active:
-                btn.config(bg=C_BTN_STOP, activebackground=C_BTN_STOP_HOVER)
-                btn.unbind('<Enter>')
-                btn.unbind('<Leave>')
-            else:
-                btn.config(bg=C_BTN_SPECIAL, activebackground=C_BTN_SPECIAL_HOVER)
-                btn.bind('<Enter>', lambda e, b=btn: b.config(bg=C_BTN_SPECIAL_HOVER))
-                btn.bind('<Leave>', lambda e, b=btn: b.config(bg=C_BTN_SPECIAL))
 
     # ========== 按钮工厂 ==========
 
@@ -214,19 +178,6 @@ class GameLauncherApp:
         # 解散队伍
         self._make_btn(btn_frame, "解散队伍", self.disband_team, C_BTN_SPECIAL).grid(
             row=r, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
-        r += 1
-
-        # 窗口选择行
-        win_frame = tk.Frame(btn_frame, bg=C_BG)
-        win_frame.grid(row=r, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
-        for i in range(6):
-            win_frame.columnconfigure(i, weight=1)
-        labels = ["全部", "1", "2", "3", "4", "5"]
-        for i, label in enumerate(labels):
-            btn = self._make_btn(win_frame, label, lambda idx=i: self._select_window(idx), C_BTN_SPECIAL)
-            btn.grid(row=0, column=i, padx=1, pady=0, sticky='ew')
-            self.window_btns.append(btn)
-        self._update_window_btn_style()
         r += 1
 
         # 任务按钮（橙色）
@@ -432,25 +383,15 @@ class GameLauncherApp:
             return
 
         if name in TEAM_TASKS:
-            # 组队型：永远在窗口 1（队长）执行，不受窗口选择影响
+            # 组队型/全屏截图型：只执行一次，用窗口1的上下文
             hwnd, rect = all_windows[0]
             self.task_windows[name] = {hwnd}
-            log(f"── 窗口1（队长） ──")
+            log(f"── 执行 {name} ──")
             self._run_single_task(hwnd, rect, func, stop_event, rounds)
         else:
-            # 独立型：根据选择筛选窗口
-            if self.selected_windows is not None:
-                valid = [i for i in sorted(self.selected_windows) if i < len(all_windows)]
-                if not valid:
-                    log("选中的窗口不存在", "WARN")
-                    self.task_running[name] = False
-                    self.root.after(0, lambda: self._set_btn_idle(name))
-                    return
-                windows = [all_windows[i] for i in valid]
-                log(f"── 窗口{'+'.join(str(i+1) for i in valid)} ──")
-            else:
-                windows = all_windows
-                log(f"── 全部窗口 ──")
+            # 独立型：全部窗口并行
+            windows = all_windows
+            log(f"── 全部窗口 ──")
 
             self.task_windows[name] = set(hwnd for hwnd, _ in windows)
 
@@ -545,42 +486,79 @@ class GameLauncherApp:
             log("未找到游戏窗口", "WARN")
             return
 
-        if self.selected_windows is not None:
-            valid = [i for i in sorted(self.selected_windows) if i < len(windows)]
-            if not valid:
-                log("选中的窗口不存在", "WARN")
-                return
-            windows = [windows[i] for i in valid]
-
         log("开始一条龙")
         stop_event = threading.Event()
         self.task_stop_events['all_in_one'] = stop_event
         threading.Thread(target=self._all_in_one_thread, args=(windows, stop_event), daemon=True).start()
 
     def _all_in_one_thread(self, windows, stop_event):
-        """一条龙：独立型任务每窗口并行，顺序执行各子任务"""
-        task_order = ['shimen', 'baotu', 'watu', 'mijing', 'yabiao']
-        task_names = {'shimen': '师门', 'baotu': '宝图', 'watu': '挖图', 'mijing': '秘境', 'yabiao': '押镖'}
+        """一条龙：组队→副本x2→捉鬼(含解散)→师门→宝图→挖图→秘境→押镖→答题"""
         log("一条龙任务开始")
-        for name in task_order:
+
+        # 第1步：组队（只在窗口1执行）
+        if stop_event.is_set():
+            return
+        log("── 组队 开始 ──")
+        self.create_team()
+
+        # 第2步：副本x2
+        for i in range(2):
             if stop_event.is_set():
                 break
-            log(f"── {task_names[name]} 开始 ──")
-            func = TASK_FUNCS.get(name)
-            if not func:
-                continue
-            # 每个窗口一个线程
-            threads = []
-            for hwnd, rect in windows:
-                t = threading.Thread(
-                    target=self._run_single_task,
-                    args=(hwnd, rect, func, stop_event),
-                    daemon=True
-                )
-                threads.append(t)
-                t.start()
-            for t in threads:
-                t.join()
+            log(f"── 副本 第{i+1}次 开始 ──")
+            func = TASK_FUNCS['fuben']
+            hwnd, rect = windows[0]
+            self._run_single_task(hwnd, rect, func, stop_event)
+
+        # 第3步：捉鬼（含自动解散）
+        if stop_event.is_set():
+            return
+        log("── 捉鬼 开始 ──")
+        func = TASK_FUNCS['zhuogui']
+        hwnd, rect = windows[0]
+        self._run_single_task(hwnd, rect, func, stop_event, rounds=2)
+
+        # 第4步：师门
+        if stop_event.is_set():
+            return
+        log("── 师门 开始 ──")
+        func = TASK_FUNCS['shimen']
+        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+
+        # 第5步：宝图
+        if stop_event.is_set():
+            return
+        log("── 宝图 开始 ──")
+        func = TASK_FUNCS['baotu']
+        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+
+        # 第6步：挖图
+        if stop_event.is_set():
+            return
+        log("── 挖图 开始 ──")
+        func = TASK_FUNCS['watu']
+        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+
+        # 第7步：秘境
+        if stop_event.is_set():
+            return
+        log("── 秘境 开始 ──")
+        func = TASK_FUNCS['mijing']
+        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+
+        # 第8步：押镖
+        if stop_event.is_set():
+            return
+        log("── 押镖 开始 ──")
+        func = TASK_FUNCS['yabiao']
+        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+
+        # 第9步：答题
+        if stop_event.is_set():
+            return
+        log("── 答题 开始 ──")
+        func = TASK_FUNCS['dati']
+        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
             log(f"── {task_names[name]} 完成 ──")
             time.sleep(2)
         log("一条龙任务完成")
