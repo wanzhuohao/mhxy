@@ -4,7 +4,7 @@ import time
 from core import log, _screenshot_gray, _match, TPL, _wait, _retry
 from context import safe_click
 from notify import send_feishu_msg
-from tasks.shimen import REGIONS, _match_in_region
+from tasks.shimen import REGIONS, _match_in_region, _retry_click_activity
 
 
 def baotu_start(stop_event):
@@ -47,10 +47,25 @@ def baotu_start(stop_event):
         if r:
             found_baotu.append((i, r))
         else:
-            log(f"窗口{i+1}：未找到宝图任务", "WARN")
-            missing.append(f"窗口{i+1}")
+            missing.append(i)
+
+    # 未找到的窗口点击重试
     if missing:
-        send_feishu_msg(f"⚠️ 宝图：{','.join(missing)} 未找到宝图任务")
+        shot = _retry_click_activity(missing, stop_event) or shot
+        still_missing = []
+        for i in missing:
+            rect = REGIONS[i]
+            r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.75)
+            if r:
+                found_baotu.append((i, r))
+            else:
+                still_missing.append(i)
+        missing = still_missing
+
+    if missing:
+        for i in missing:
+            log(f"窗口{i+1}：未找到宝图任务", "WARN")
+        send_feishu_msg(f"⚠️ 宝图：{','.join(f'窗口{i+1}' for i in missing)} 未找到宝图任务")
 
     # 点击宝图任务右边
     for i, (cx, cy, val) in found_baotu:

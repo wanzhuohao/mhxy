@@ -5,7 +5,7 @@ import datetime
 from core import log, _screenshot_gray, TPL, _wait
 from context import safe_click
 from notify import send_feishu_msg
-from tasks.shimen import REGIONS, _match_in_region
+from tasks.shimen import REGIONS, _match_in_region, _retry_click_activity
 
 
 def dati_start(stop_event):
@@ -89,18 +89,36 @@ def _dati_sanjie(stop_event):
 
     # 第2步：全屏截图，找三界按钮并点击右边
     shot = _screenshot_gray()
+    found_sanji = []
     missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['sanjie'], rect)
         if r:
-            safe_click(r[0] + 130, r[1] + 10)
-            log(f"窗口{i+1} 点击三界右边 ({r[0]+130},{r[1]+10})")
+            found_sanji.append((i, r))
         else:
-            log(f"窗口{i+1}：未找到三界按钮", "WARN")
-            missing.append(f"窗口{i+1}")
-        time.sleep(0.3)
+            missing.append(i)
+
+    # 未找到的窗口点击重试
     if missing:
-        send_feishu_msg(f"⚠️ 三界答题：{','.join(missing)} 未找到三界按钮")
+        shot = _retry_click_activity(missing, stop_event) or shot
+        still_missing = []
+        for i in missing:
+            r = _match_in_region(shot, TPL['sanjie'], REGIONS[i])
+            if r:
+                found_sanji.append((i, r))
+            else:
+                still_missing.append(i)
+        missing = still_missing
+
+    for i, r in found_sanji:
+        safe_click(r[0] + 130, r[1] + 10)
+        log(f"窗口{i+1} 点击三界右边 ({r[0]+130},{r[1]+10})")
+        time.sleep(0.3)
+
+    if missing:
+        for i in missing:
+            log(f"窗口{i+1}：未找到三界按钮", "WARN")
+        send_feishu_msg(f"⚠️ 三界答题：{','.join(f'窗口{i+1}' for i in missing)} 未找到三界按钮")
 
     if _wait(2, stop_event):
         return
