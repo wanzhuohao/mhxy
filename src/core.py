@@ -115,6 +115,7 @@ def _match(template, screenshot_gray):
     """模板匹配，返回 (max_val, max_loc)"""
     result = cv2.matchTemplate(screenshot_gray, template, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(result)
+    return max_val, max_loc
 
 
 def _match_in_region(shot_full, template, region, yuzhi=0.8):
