@@ -57,6 +57,7 @@ TPL = {
     'yiwancheng':     _load('fuben/yiwancheng.bmp'),
     'zhuoguirenwu':   _load('zhuogui/zhuoguirenwu.bmp'),
     'zhuogui':        _load('zhuogui/zhuogui.bmp'),
+    'zhuogui_wancheng': _load('zhuogui/wancheng.bmp'),
 }
 
 # 宝图搜索区域

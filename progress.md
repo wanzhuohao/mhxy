@@ -14,10 +14,13 @@
 - 副本/捉鬼固定取屏幕左上角窗口1（按屏幕坐标排序，不依赖线程上下文）
 - 副本移除确定按钮逻辑（当前流程不需要）
 - 捉鬼新增流程：活动→捉鬼右边→主循环（第一次不检测颜色，后续检测弹窗颜色）
+- 捉鬼检测改为图片匹配（zhuogui/wancheng.bmp），阈值0.8
 - 捉鬼支持 rounds 参数，默认2轮，完成时飞书通知
+- 捉鬼完成最后一轮点 (350,392) 退出，并 stop_event 停止任务
 - GUI 新增无限鬼按钮（99轮），抓点/分辨率独立一行
-- 新增模板：putong、xuanzefuben、jinru、yiwancheng、zhuogui、zhuoguirenwu
+- 新增模板：putong、xuanzefuben、jinru、yiwancheng、zhuogui、zhuoguirenwu、wancheng(zhuogui)
 - 更新 fubentiaoguo.bmp 模板（旧模板分辨率不匹配）
+- 组队好友Y坐标 356→350
 
 ## 2026-06-06 模块化重构
 
