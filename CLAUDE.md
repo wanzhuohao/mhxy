@@ -16,7 +16,10 @@
 mhxy/
 ├── src/           # 源代码
 │   ├── mhxy.py    # 主程序 GUI
-│   ├── business.py # 业务逻辑
+│   ├── core.py    # 截图、模板匹配、重试
+│   ├── context.py # 窗口上下文、点击锁
+│   ├── notify.py  # 飞书通知
+│   ├── tasks/     # 任务模块
 │   └── config.json # 配置文件（不提交）
 ├── templates/     # 模板图片
 ├── tool/          # 可复用脚本
@@ -55,6 +58,10 @@ npm install -g @anthropic-ai/lark-cli
   "lark_cli_path": "lark-cli 的完整路径"
 }
 ```
+
+## 注意事项
+
+- 窗口标题都一样，排序用句柄不用标题
 
 ## 使用方式
 

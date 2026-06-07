@@ -203,17 +203,18 @@ class GameLauncherApp:
         self.topmost_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
         r += 1
 
-        # 组队 / (抓点+分辨率)
+        # 组队 / 无限鬼
         self._make_btn(btn_frame, "组  队", self.create_team, C_BTN_SPECIAL).grid(
             row=r, column=0, padx=2, pady=1, sticky='ew')
-        tool_sub = tk.Frame(btn_frame, bg=C_BG)
-        tool_sub.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
-        tool_sub.columnconfigure(0, weight=1)
-        tool_sub.columnconfigure(1, weight=1)
-        self._make_btn(tool_sub, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
-            row=0, column=0, padx=1, pady=0, sticky='ew')
-        self._make_btn(tool_sub, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
-            row=0, column=1, padx=1, pady=0, sticky='ew')
+        self._make_btn(btn_frame, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
+            row=r, column=1, padx=2, pady=1, sticky='ew')
+        r += 1
+
+        # 抓点 / 分辨率
+        self._make_btn(btn_frame, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
+            row=r, column=0, padx=2, pady=1, sticky='ew')
+        self._make_btn(btn_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
+            row=r, column=1, padx=2, pady=1, sticky='ew')
         r += 1
 
         # 窗口选择行
@@ -299,6 +300,7 @@ class GameLauncherApp:
             return
 
         to_arrange = [w for w, _ in windows[:5]]
+        to_arrange.sort()  # 按句柄排序（窗口标题都一样，不能按标题排）
         if len(to_arrange) > 1:
             idx = self.arrange_index % len(to_arrange)
             first = to_arrange.pop(idx)
@@ -373,8 +375,8 @@ class GameLauncherApp:
 
     # ========== 任务调度 ==========
 
-    def toggle_task(self, name):
-        """启动/停止任务"""
+    def toggle_task(self, name, rounds=None):
+        """启动/停止任务，rounds 可指定轮数"""
         btn = self.task_buttons[name]
         btn.config(state=tk.DISABLED)
         self.root.after(300, lambda: btn.config(state=tk.NORMAL))
@@ -396,10 +398,10 @@ class GameLauncherApp:
             self.task_stop_events[name] = stop_event
             func = TASK_FUNCS.get(name)
             if func:
-                threading.Thread(target=self._dispatch_task, args=(name, func, stop_event), daemon=True).start()
+                threading.Thread(target=self._dispatch_task, args=(name, func, stop_event, rounds), daemon=True).start()
             log(f"启动{name}")
 
-    def _dispatch_task(self, name, func, stop_event):
+    def _dispatch_task(self, name, func, stop_event, rounds=None):
         """根据任务类型调度：独立型每窗口一个线程，组队型只在窗口 1 执行"""
         all_windows = self._get_game_windows()
         if not all_windows:
@@ -413,7 +415,7 @@ class GameLauncherApp:
             hwnd, rect = all_windows[0]
             self.task_windows[name] = {hwnd}
             log(f"── 窗口1（队长） ──")
-            self._run_single_task(hwnd, rect, func, stop_event)
+            self._run_single_task(hwnd, rect, func, stop_event, rounds)
         else:
             # 独立型：根据选择筛选窗口
             if self.selected_windows is not None:
@@ -436,7 +438,7 @@ class GameLauncherApp:
             for hwnd, rect in windows:
                 t = threading.Thread(
                     target=self._run_single_task,
-                    args=(hwnd, rect, func, stop_event),
+                    args=(hwnd, rect, func, stop_event, rounds),
                     daemon=True
                 )
                 threads.append(t)
@@ -450,13 +452,16 @@ class GameLauncherApp:
         self.root.after(0, lambda: self._set_btn_idle(name))
         log(f"{name}完成")
 
-    def _run_single_task(self, hwnd, rect, func, stop_event):
+    def _run_single_task(self, hwnd, rect, func, stop_event, rounds=None):
         """单个窗口的任务线程：设置上下文，执行任务"""
         try:
             context.set_window_context(hwnd, rect)
             win32gui.SetForegroundWindow(hwnd)
             time.sleep(0.5)
-            func(stop_event)
+            if rounds is not None:
+                func(stop_event, rounds=rounds)
+            else:
+                func(stop_event)
         except Exception as e:
             log(f"窗口执行出错: {e}", "ERR")
 
@@ -548,7 +553,7 @@ class GameLauncherApp:
             for hwnd, rect in windows:
                 t = threading.Thread(
                     target=self._run_single_task,
-                    args=(hwnd, rect, func, stop_event),
+                    args=(hwnd, rect, func, stop_event, rounds),
                     daemon=True
                 )
                 threads.append(t)
