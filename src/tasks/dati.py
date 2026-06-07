@@ -69,37 +69,59 @@ def _dati_sanjie(stop_event):
     """三界答题：全屏截图 → 点活动 → 点三界右边 → 求助/使用"""
     log("三界答题开始")
 
-    # 第1步：全屏截图，找活动按钮
+    # 第0步：先检查三界按钮是否已经在屏幕上（活动面板已打开）
     shot = _screenshot_gray(full=True)
-    missing = []
+    found_sanji_direct = []
     for i, rect in enumerate(REGIONS):
-        r = _match_in_region(shot, TPL['huodong'], rect)
+        r = _match_in_region(shot, TPL['sanjie'], rect)
         if r:
-            safe_click(r[0], r[1])
-            log(f"窗口{i+1} 点击活动 ({r[0]},{r[1]})")
-        else:
-            log(f"窗口{i+1}：未找到活动按钮", "WARN")
-            missing.append(f"窗口{i+1}")
-        time.sleep(0.3)
-    if missing:
-        send_feishu_msg(f"⚠️ 三界答题：{','.join(missing)} 未找到活动按钮")
+            found_sanji_direct.append((i, r))
+    if found_sanji_direct:
+        log(f"活动面板已打开，直接找三界按钮，找到{len(found_sanji_direct)}个")
+        # 跳到点击三界右边
+        for i, r in found_sanji_direct:
+            safe_click(r[0] + 130, r[1] + 10)
+            log(f"窗口{i+1} 点击三界右边 ({r[0]+130},{r[1]+10})")
+            time.sleep(0.3)
+        if _wait(2, stop_event):
+            return
+    else:
+        # 第1步：全屏截图，找活动按钮
+        missing = []
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['huodong'], rect)
+            if r:
+                safe_click(r[0], r[1])
+                log(f"窗口{i+1} 点击活动 ({r[0]},{r[1]})")
+            else:
+                missing.append(i)
+            time.sleep(0.3)
+        if missing:
+            send_feishu_msg(f"⚠️ 三界答题：{','.join(f'窗口{i+1}' for i in missing)} 未找到活动按钮")
 
-    # 所有窗口都未找到活动按钮，循环等待
-    if len(missing) == len(REGIONS):
-        for _ in range(60):  # 最多等5分钟
-            if stop_event.is_set():
-                return
-            if _wait(5, stop_event):
-                return
-            shot = _screenshot_gray(full=True)
-            for i, rect in enumerate(REGIONS):
-                r = _match_in_region(shot, TPL['huodong'], rect)
-                if r:
-                    return _dati_sanjie(stop_event)
-        log("答题等待活动按钮超时", "WARN")
+        if len(missing) == len(REGIONS):
+            # 循环等待：检查三界按钮或活动按钮出现
+            for _ in range(60):
+                if stop_event.is_set():
+                    return
+                if _wait(5, stop_event):
+                    return
+                shot = _screenshot_gray(full=True)
+                # 检查三界按钮
+                for i, rect in enumerate(REGIONS):
+                    r = _match_in_region(shot, TPL['sanjie'], rect)
+                    if r:
+                        return _dati_sanjie(stop_event)
+                # 检查活动按钮
+                for i, rect in enumerate(REGIONS):
+                    r = _match_in_region(shot, TPL['huodong'], rect)
+                    if r:
+                        return _dati_sanjie(stop_event)
+            log("答题等待超时", "WARN")
+            return
 
-    if _wait(3, stop_event):
-        return
+        if _wait(3, stop_event):
+            return
 
     # 第2步：全屏截图，找三界按钮并点击右边
     shot = _screenshot_gray(full=True)
