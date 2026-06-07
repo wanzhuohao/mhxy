@@ -4,7 +4,7 @@ import time
 from core import log, _screenshot_gray, TPL, _wait
 from context import safe_click
 from notify import send_feishu_msg
-from tasks.shimen import REGIONS, _match_in_region
+from core import _match_in_region, REGIONS
 
 
 def watu_start(stop_event):

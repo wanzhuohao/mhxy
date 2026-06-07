@@ -630,15 +630,29 @@ class GameLauncherApp:
         # 领取奖励
         if stop_event.is_set():
             return
+        log("等待5秒后领取奖励...")
+        time.sleep(5)
+        if stop_event.is_set():
+            return
         log("── 领取奖励 ──")
         import core
-        shot = core._screenshot_gray(full=True)
-        # 找活动按钮并点击
-        for hwnd, rect in windows[:5]:
-            r = core._match_in_region(shot, core.TPL['huodong'], rect)
-            if r:
-                context.safe_click(r[0], r[1])
-                time.sleep(0.3)
+        # 找活动按钮并点击（最多重试3次）
+        for _retry in range(3):
+            if stop_event.is_set():
+                return
+            shot = core._screenshot_gray(full=True)
+            found = False
+            for hwnd, rect in windows[:5]:
+                r = core._match_in_region(shot, core.TPL['huodong'], rect)
+                if r:
+                    context.safe_click(r[0], r[1])
+                    log(f"窗口{windows.index((hwnd,rect))+1} 点击活动")
+                    found = True
+                    time.sleep(0.3)
+            if found:
+                break
+            log("领取奖励：未找到活动按钮，等待重试")
+            time.sleep(3)
         time.sleep(3)
 
         # 每个窗口5个奖励按钮，按轮次点击（先5个窗口的按钮1，再按钮2...）
