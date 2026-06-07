@@ -2,31 +2,19 @@
 
 import threading
 import time
-import pyautogui
-from core import log
+from core import log, get_game_windows
 from context import safe_click
 from notify import send_feishu_msg
 
 
 def _get_window1_rect():
-    """固定取屏幕左上角的窗口1"""
-    import win32gui
-    windows = []
-    def _enum(hwnd, _):
-        if win32gui.IsWindowVisible(hwnd):
-            title = win32gui.GetWindowText(hwnd)
-            if '梦幻西游' in title or 'MyLauncher' in title:
-                rect = win32gui.GetWindowRect(hwnd)
-                windows.append((hwnd, rect))
-    win32gui.EnumWindows(_enum, None)
-    windows.sort(key=lambda w: (w[1][1], w[1][0]))
-    return windows[0][1] if windows else None
+    """固定窗口1坐标（2560×1440分辨率，窗口870×692）"""
+    return (0, 0, 870, 692)
 
 
 def zhuogui_start(stop_event: threading.Event, rounds=2):
     """捉鬼：检测弹窗颜色 → 点击 → 等待 → 循环"""
     log("捉鬼任务开始")
-    send_feishu_msg("🎮 捉鬼任务开始")
 
     # 固定取屏幕左上角的窗口1
     w1_rect = _get_window1_rect()
@@ -74,9 +62,36 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
             send_feishu_msg(f"完成第{count}轮捉鬼")
             if count >= rounds:
                 log(f"捉鬼{rounds}轮已完成")
-                # 最后一轮点 (350, 392) 退出
+                # 点 (350, 392) 退出
                 safe_click(ox + 350, oy + 392)
                 send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
+                if stop_event.wait(2):
+                    break
+                # 点队伍
+                find_and_click(TPL['duiwu'], yuzhi=0.8, region=w1_rect)
+                if stop_event.wait(1):
+                    break
+                # 点击 (740,240) 然后 (599,299)，循环4次
+                import random as _rand
+                # 前3次: (740,240) -> (599,299) -> (511,400)
+                for _ in range(3):
+                    safe_click(ox + 740 + _rand.randint(-5, 5), oy + 240 + _rand.randint(-5, 5))
+                    if stop_event.wait(0.5):
+                        break
+                    safe_click(ox + 599 + _rand.randint(-5, 5), oy + 299 + _rand.randint(-5, 5))
+                    if stop_event.wait(0.5):
+                        break
+                    safe_click(ox + 511 + _rand.randint(-5, 5), oy + 400 + _rand.randint(-5, 5))
+                    if stop_event.wait(0.5):
+                        break
+                # 第4次: (740,190) -> (599,248) -> (511,400)
+                safe_click(ox + 740 + _rand.randint(-5, 5), oy + 190 + _rand.randint(-5, 5))
+                if stop_event.wait(0.5):
+                    return
+                safe_click(ox + 599 + _rand.randint(-5, 5), oy + 248 + _rand.randint(-5, 5))
+                if stop_event.wait(0.5):
+                    return
+                safe_click(ox + 511 + _rand.randint(-5, 5), oy + 400 + _rand.randint(-5, 5))
                 stop_event.set()
                 break
 
@@ -108,17 +123,6 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
     except Exception as e:
         log(f"捉鬼任务异常: {e}", "ERR")
         send_feishu_msg(f"❌ 捉鬼任务异常: {e}")
-
-
-def _check_color_at(x, y, target_rgb, tolerance=8):
-    """检测指定坐标颜色"""
-    shot = pyautogui.screenshot(region=(x - 2, y - 2, 5, 5))
-    for dx in range(5):
-        for dy in range(5):
-            pixel = shot.getpixel((dx, dy))
-            if all(abs(pixel[i] - target_rgb[i]) <= tolerance for i in range(3)):
-                return True, pixel
-    return False, None
 
 
 def _random_click(x, y, rand_x=5, rand_y=5):
