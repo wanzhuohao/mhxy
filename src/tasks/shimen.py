@@ -60,7 +60,7 @@ def shimen_start(stop_event: threading.Event):
     # 点击找到的活动按钮
     for i, (cx, cy, val) in found_activity:
         safe_click(cx, cy)
-        log(f"窗口{i+1} 点击活动 ({cx},{cy})")
+        log(f"窗口{i+1} [huodong] 点击活动 ({cx},{cy})")
         time.sleep(0.3)
 
     # 等待界面刷新
@@ -80,7 +80,9 @@ def shimen_start(stop_event: threading.Event):
 
     # 未找到的窗口点击重试
     if missing:
-        shot = _retry_click_activity(missing, stop_event) or shot
+        result = _retry_click_activity(missing, stop_event)
+        if result is not None:
+            shot = result
         still_missing = []
         for i in missing:
             r = _match_in_region(shot, TPL['huodongshimen'], REGIONS[i])
@@ -98,7 +100,7 @@ def shimen_start(stop_event: threading.Event):
     # 点击师门右边
     for i, (cx, cy, val) in found_shimen:
         safe_click(cx + 130, cy + 10)
-        log(f"窗口{i+1} 点击师门右边 ({cx+130},{cy+10})")
+        log(f"窗口{i+1} [huodongshimen] 点击师门右边 ({cx+130},{cy+10})")
         time.sleep(0.3)
 
     if _wait(2, stop_event):
@@ -134,7 +136,7 @@ def shimen_start(stop_event: threading.Event):
         # 逐个点击去完成
         for i, (cx, cy, val) in found_qu:
             safe_click(cx, cy)
-            log(f"窗口{i+1} 点击去完成 ({cx},{cy})")
+            log(f"窗口{i+1} [quwancheng] 点击去完成 ({cx},{cy})")
             completed[i] += 1
 
         # 等待完成

@@ -596,14 +596,19 @@ class GameLauncherApp:
             time.sleep(2)
 
         # 副本x2
+        if not started and start_from == 'fuben':
+            started = True
         if started and not stop_event.is_set():
-            for i in range(2):
+            fuben_times = 1 if start_from == 'fuben' else 2
+            for i in range(fuben_times):
                 if stop_event.is_set():
                     break
                 log(f"── 副本 第{i+1}次 开始 ──")
+                self.root.after(0, lambda: self._set_btn_current('fuben'))
                 task_stop = threading.Event()
                 self.task_stop_events['all_in_one_current'] = task_stop
                 self._run_single_task(hwnd, rect, TASK_FUNCS['fuben'], task_stop)
+                self.root.after(0, lambda: self._set_btn_done('fuben'))
 
         # 按顺序执行任务
         for task_name, display, rounds in self._ALL_IN_ONE_STEPS:
@@ -636,23 +641,24 @@ class GameLauncherApp:
             return
         log("── 领取奖励 ──")
         import core
-        # 找活动按钮并点击（最多重试3次）
-        for _retry in range(3):
-            if stop_event.is_set():
-                return
-            shot = core._screenshot_gray(full=True)
-            found = False
-            for hwnd, rect in windows[:5]:
-                r = core._match_in_region(shot, core.TPL['huodong'], rect)
-                if r:
-                    context.safe_click(r[0], r[1])
-                    log(f"窗口{windows.index((hwnd,rect))+1} 点击活动")
-                    found = True
-                    time.sleep(0.3)
-            if found:
+        # 检查活动按钮是否存在
+        shot = core._screenshot_gray(full=True)
+        found_activity = False
+        for hwnd, rect in windows[:5]:
+            if core._match_in_region(shot, core.TPL['huodong'], rect):
+                found_activity = True
                 break
-            log("领取奖励：未找到活动按钮，等待重试")
-            time.sleep(3)
+        if not found_activity:
+            log("领取奖励：未找到活动按钮，跳过")
+            return
+
+        # 找活动按钮并点击
+        for hwnd, rect in windows[:5]:
+            r = core._match_in_region(shot, core.TPL['huodong'], rect)
+            if r:
+                context.safe_click(r[0], r[1])
+                log(f"窗口{windows.index((hwnd,rect))+1} 点击活动")
+                time.sleep(0.3)
         time.sleep(3)
 
         # 每个窗口5个奖励按钮，按轮次点击（先5个窗口的按钮1，再按钮2...）

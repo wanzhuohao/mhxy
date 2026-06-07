@@ -58,7 +58,7 @@ def baotu_start(stop_event):
         # 点击找到的活动按钮
         for i, (cx, cy, val) in found_activity:
             safe_click(cx, cy)
-            log(f"窗口{i+1} 点击活动 ({cx},{cy})")
+            log(f"窗口{i+1} [huodong] 点击活动 ({cx},{cy})")
             time.sleep(0.3)
 
         if _wait(3, stop_event):
@@ -80,7 +80,9 @@ def baotu_start(stop_event):
         if not missing:
             break
         # 未找到的窗口点击重试
-        shot = _retry_click_activity(missing, stop_event) or shot
+        result = _retry_click_activity(missing, stop_event)
+        if result is not None:
+            shot = result
         still_missing = []
         for i in missing:
             rect = REGIONS[i]
@@ -103,7 +105,7 @@ def baotu_start(stop_event):
     # 点击宝图任务右边
     for i, (cx, cy, val) in found_baotu:
         safe_click(cx + 130, cy + 15)
-        log(f"窗口{i+1} 点击宝图任务右边 ({cx+130},{cy+15})")
+        log(f"窗口{i+1} [baoturenwu] 点击宝图任务右边 ({cx+130},{cy+15})")
         time.sleep(0.3)
 
     if _wait(3, stop_event):
@@ -125,7 +127,7 @@ def baotu_start(stop_event):
 
     for i, (cx, cy, val) in found_tingting:
         safe_click(cx, cy)
-        log(f"窗口{i+1} 点击听听无妨 ({cx},{cy})")
+        log(f"窗口{i+1} [tingtingwufang] 点击听听无妨 ({cx},{cy})")
         time.sleep(0.3)
 
     if _wait(2, stop_event):
@@ -150,7 +152,7 @@ def baotu_start(stop_event):
                 r = _match_in_region(shot, TPL['renwu_baotu'], rect, yuzhi=0.8)
                 if r:
                     safe_click(r[0] + 50, r[1] + 10)
-                    log(f"窗口{i+1} 点击宝图追踪")
+                    log(f"窗口{i+1} [renwu_baotu] 点击宝图追踪")
 
         if len(done_windows) == len(REGIONS):
             log("宝图任务全部完成")

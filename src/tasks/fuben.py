@@ -16,9 +16,12 @@ def fuben_start(stop_event: threading.Event):
     # 固定窗口1坐标
     rect = (0, 0, 870, 692)
 
+    # 第0步：先检查跳过按钮是否已经在屏幕上（副本已进入）
+    if find_pic(TPL['fubentiaoguo'], yuzhi=0.65, region=rect):
+        log("副本已进入，直接进入主循环")
     # 第1步：点活动（没找到则跳过，直接进主循环）
-    if find_and_click(TPL['huodong'], region=rect):
-        log("点击活动")
+    elif find_and_click(TPL['huodong'], region=rect):
+        log("[huodong] 点击活动")
         if _wait(2, stop_event):
             return
 
@@ -37,7 +40,7 @@ def fuben_start(stop_event: threading.Event):
         # 第3步：轮询等待选择副本并点击
         for _ in range(15):
             if find_and_click(TPL['xuanzefuben'], region=rect):
-                log("点击选择副本")
+                log("[xuanzefuben] 点击选择副本")
                 break
             if _wait(1, stop_event):
                 return
@@ -56,7 +59,7 @@ def fuben_start(stop_event: threading.Event):
                 idx = _jinru_index % len(points)
                 x, y = int(points[idx][0]), int(points[idx][1])
                 safe_click(x, y)
-                log(f"点击进入按钮{idx+1}: ({x}, {y})")
+                log(f"[jinru] 点击进入按钮{idx+1}: ({x}, {y})")
                 _jinru_index = (_jinru_index + 1) % len(points)
                 break
             if _wait(1, stop_event):
@@ -75,7 +78,7 @@ def fuben_start(stop_event: threading.Event):
         while not stop_event.is_set():
             # 检测已完成，直接点击
             if find_and_click(TPL['yiwancheng'], yuzhi=0.8, region=rect):
-                log("点击已完成，副本结束")
+                log("[yiwancheng] 点击已完成，副本结束")
                 break
 
             if _retry(lambda: find_and_click_path('fubentiaoguo.bmp', yuzhi=0.65, region=rect)):
@@ -85,13 +88,13 @@ def fuben_start(stop_event: threading.Event):
                         return
                     shot_hit = False
                     if find_and_click(TPL['kuaijin'], yuzhi=0.65, region=rect):
-                        log("副本：点击快进")
+                        log("[kuaijin] 副本：点击快进")
                         shot_hit = True
-                    if find_and_click(TPL['qingxuanze'], yuzhi=0.65, region=rect):
-                        log("副本：点击请选取")
+                    elif find_and_click(TPL['qingxuanze'], yuzhi=0.8, region=rect, dx=50, dy=20):
+                        log("[qingxuanze] 副本：点击请选取")
                         shot_hit = True
-                    if find_and_click(TPL['zhan'], yuzhi=0.65, region=rect):
-                        log("副本：点击战")
+                    elif find_and_click(TPL['zhan'], yuzhi=0.8, region=rect):
+                        log("[zhan] 副本：点击战")
                         shot_hit = True
                     if shot_hit:
                         if _wait(3, stop_event):

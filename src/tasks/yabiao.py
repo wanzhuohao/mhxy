@@ -28,7 +28,7 @@ def yabiao_start(stop_event):
     if found_activity:
         for i, (cx, cy, val) in found_activity:
             safe_click(cx, cy)
-            log(f"窗口{i+1} 点击活动 ({cx},{cy})")
+            log(f"窗口{i+1} [huodong] 点击活动 ({cx},{cy})")
             time.sleep(0.3)
 
         if _wait(3, stop_event):
@@ -47,7 +47,9 @@ def yabiao_start(stop_event):
 
         # 未找到的窗口点击重试
         if missing:
-            shot = _retry_click_activity(missing, stop_event) or shot
+            result = _retry_click_activity(missing, stop_event)
+            if result is not None:
+                shot = result
             still_missing = []
             for i in missing:
                 r = _match_in_region(shot, TPL['yunbiao'], REGIONS[i])
@@ -59,7 +61,7 @@ def yabiao_start(stop_event):
 
         for i, r in found_yunbiao:
             safe_click(r[0] + 180, r[1] + 10)
-            log(f"窗口{i+1} 点击运镖右边 ({r[0]+180},{r[1]+10})")
+            log(f"窗口{i+1} [yunbiao] 点击运镖右边 ({r[0]+180},{r[1]+10})")
             time.sleep(0.3)
 
         if missing:
@@ -94,7 +96,7 @@ def yabiao_start(stop_event):
             r = _match_in_region(shot, TPL['yasongbiaoyin'], rect)
             if r:
                 safe_click(r[0], r[1])
-                log(f"窗口{i+1} 点击运送镖银 ({r[0]},{r[1]})")
+                log(f"窗口{i+1} [yasongbiaoyin] 点击运送镖银 ({r[0]},{r[1]})")
                 found_any = True
                 time.sleep(0.3)
 
@@ -107,7 +109,7 @@ def yabiao_start(stop_event):
             r = _match_in_region(shot, TPL['queding'], rect)
             if r:
                 safe_click(r[0], r[1])
-                log(f"窗口{i+1} 点击确定 ({r[0]},{r[1]})")
+                log(f"窗口{i+1} [queding] 点击确定 ({r[0]},{r[1]})")
                 found_any = True
                 time.sleep(0.3)
 
