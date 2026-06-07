@@ -532,18 +532,18 @@ class GameLauncherApp:
         func = TASK_FUNCS['baotu']
         self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
 
-        # 第6步：挖图
-        if stop_event.is_set():
-            return
-        log("── 挖图 开始 ──")
-        func = TASK_FUNCS['watu']
-        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
-
-        # 第7步：秘境
+        # 第6步：秘境
         if stop_event.is_set():
             return
         log("── 秘境 开始 ──")
         func = TASK_FUNCS['mijing']
+        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+
+        # 第7步：挖图
+        if stop_event.is_set():
+            return
+        log("── 挖图 开始 ──")
+        func = TASK_FUNCS['watu']
         self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
 
         # 第8步：押镖
@@ -559,9 +559,36 @@ class GameLauncherApp:
         log("── 答题 开始 ──")
         func = TASK_FUNCS['dati']
         self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
-            log(f"── {task_names[name]} 完成 ──")
-            time.sleep(2)
+
+        # 第10步：领取奖励
+        if stop_event.is_set():
+            return
+        log("── 领取奖励 ──")
+        import core
+        shot = core._screenshot_gray()
+        # 找活动按钮并点击
+        for hwnd, rect in windows[:5]:
+            r = core._match_in_region(shot, core.TPL['huodong'], rect)
+            if r:
+                context.safe_click(r[0], r[1])
+                time.sleep(0.3)
+        time.sleep(3)
+
+        # 每个窗口5个奖励按钮，按轮次点击（先5个窗口的按钮1，再按钮2...）
+        reward_xs = [299, 405, 526, 640, 745]
+        reward_y = 500
+        for rx in reward_xs:
+            for i, (hwnd, rect) in enumerate(windows[:5]):
+                ox, oy = rect[0], rect[1]
+                x = ox + rx + random.randint(-3, 3)
+                y = oy + reward_y + random.randint(-3, 3)
+                context.safe_click(x, y)
+                log(f"窗口{i+1} 领取奖励 ({x},{y})")
+                time.sleep(0.3)
+            time.sleep(0.5)
+
         log("一条龙任务完成")
+        notify.send_feishu_msg("✅ 一条龙任务完成")
         self.task_stop_events.pop('all_in_one', None)
         log("一条龙全部完成")
 

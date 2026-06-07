@@ -46,7 +46,8 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
     first_round = True
     try:
         while not stop_event.is_set():
-            if first_round and entered_from_activity:
+            skip_click = first_round and entered_from_activity
+            if skip_click:
                 # 从活动进入，第一次不检测
                 first_round = False
             else:
@@ -59,6 +60,7 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
 
             count += 1
             log(f"第{count}轮捉鬼")
+            send_feishu_msg(f"完成第{count}轮捉鬼")
             if count >= rounds:
                 log(f"捉鬼{rounds}轮已完成")
                 # 点 (350, 392) 退出
@@ -94,10 +96,11 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
                 stop_event.set()
                 break
 
-            # 点击弹窗
-            safe_click(ox + 511, oy + 392)
-            if stop_event.wait(1):
-                break
+            # 第1次从活动进入不点弹窗，后续检测到完成图才点
+            if not skip_click:
+                safe_click(ox + 511, oy + 392)
+                if stop_event.wait(1):
+                    break
 
             # 等10秒
             if stop_event.wait(10):

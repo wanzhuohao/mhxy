@@ -35,13 +35,16 @@ def shimen_start(stop_event: threading.Event):
     # 第1步：全屏截图，找5个窗口的活动按钮
     shot = _screenshot_gray()
     found_activity = []
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['huodong'], rect)
         if r:
             found_activity.append((i, r))
         else:
             log(f"窗口{i+1}：未找到活动按钮", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到活动按钮")
+            missing.append(f"窗口{i+1}")
+    if missing:
+        send_feishu_msg(f"⚠️ 师门：{','.join(missing)} 未找到活动按钮")
 
     if not found_activity:
         log("所有窗口都未找到活动按钮", "WARN")
@@ -60,13 +63,16 @@ def shimen_start(stop_event: threading.Event):
     # 第2步：全屏截图，找师门右边按钮
     shot = _screenshot_gray()
     found_shimen = []
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['huodongshimen'], rect)
         if r:
             found_shimen.append((i, r))
         else:
             log(f"窗口{i+1}：未找到师门按钮", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到师门按钮")
+            missing.append(f"窗口{i+1}")
+    if missing:
+        send_feishu_msg(f"⚠️ 师门：{','.join(missing)} 未找到师门按钮")
 
     # 点击师门右边
     for i, (cx, cy, val) in found_shimen:
@@ -96,7 +102,9 @@ def shimen_start(stop_event: threading.Event):
                 found_qu.append((i, r))
             else:
                 log(f"窗口{i+1}：未找到去完成", "WARN")
-                send_feishu_msg(f"⚠️ 窗口{i+1}未找到去完成")
+                missing.append(f"窗口{i+1}")
+        if missing:
+            send_feishu_msg(f"⚠️ 师门：{','.join(missing)} 未找到去完成")
 
         if not found_qu:
             log("所有窗口都没有去完成，任务结束")

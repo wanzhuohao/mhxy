@@ -14,83 +14,122 @@ def mijing_start(stop_event):
     # 第1步：全屏截图，找5个窗口的活动按钮
     shot = _screenshot_gray()
     found_activity = []
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['huodong'], rect)
         if r:
             found_activity.append((i, r))
         else:
             log(f"窗口{i+1}：未找到活动按钮", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到活动按钮")
+            missing.append(f"窗口{i+1}")
+    if missing:
+        send_feishu_msg(f"⚠️ 秘境：{','.join(missing)} 未找到活动按钮")
 
-    if not found_activity:
-        log("所有窗口都未找到活动按钮", "WARN")
-        return
+    if found_activity:
+        # 点击找到的活动
+        for i, (cx, cy, val) in found_activity:
+            safe_click(cx, cy)
+            log(f"窗口{i+1} 点击活动 ({cx},{cy})")
+            time.sleep(0.3)
 
-    for i, (cx, cy, val) in found_activity:
-        safe_click(cx, cy)
-        log(f"窗口{i+1} 点击活动 ({cx},{cy})")
-        time.sleep(0.3)
-
-    if _wait(3, stop_event):
-        return
-
-    # 第2步：全屏截图，找秘境按钮并点击右边
-    shot = _screenshot_gray()
-    for i, rect in enumerate(REGIONS):
-        r = _match_in_region(shot, TPL['huodongmijing'], rect)
-        if r:
-            safe_click(r[0] + 130, r[1] + 10)
-            log(f"窗口{i+1} 点击秘境右边 ({r[0]+130},{r[1]+10})")
-        else:
-            log(f"窗口{i+1}：未找到秘境按钮", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到秘境按钮")
-        time.sleep(0.3)
-
-    if _wait(2, stop_event):
-        return
-
-    # 第3步：全屏截图，等妖族的事出现
-    log("等待妖族的事...")
-    for _ in range(30):
-        if stop_event.is_set():
-            return
-        shot = _screenshot_gray()
-        found = False
-        for i, rect in enumerate(REGIONS):
-            r = _match_in_region(shot, TPL['yaozuodeshi'], rect)
-            if r:
-                safe_click(r[0], r[1])
-                log(f"窗口{i+1} 点击妖族的事 ({r[0]},{r[1]})")
-                found = True
-                time.sleep(0.3)
-        if found:
-            break
         if _wait(3, stop_event):
             return
 
-    if _wait(2, stop_event):
-        return
+        # 第2步：全屏截图，找秘境按钮并点击右边
+        shot = _screenshot_gray()
+        missing = []
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['huodongmijing'], rect)
+            if r:
+                safe_click(r[0] + 130, r[1] + 10)
+                log(f"窗口{i+1} 点击秘境右边 ({r[0]+130},{r[1]+10})")
+            else:
+                log(f"窗口{i+1}：未找到秘境按钮", "WARN")
+                missing.append(f"窗口{i+1}")
+            time.sleep(0.3)
+        if missing:
+            send_feishu_msg(f"⚠️ 秘境：{','.join(missing)} 未找到秘境按钮")
 
-    # 第4步：全屏截图，点继续
-    shot = _screenshot_gray()
-    for i, rect in enumerate(REGIONS):
-        r = _match_in_region(shot, TPL['jixu'], rect)
-        if r:
-            safe_click(r[0], r[1])
-            log(f"窗口{i+1} 点击继续 ({r[0]},{r[1]})")
-        time.sleep(0.3)
+        if _wait(2, stop_event):
+            return
 
-    if _wait(2, stop_event):
-        return
+        # 第3步：全屏截图，等妖族的事出现
+        log("等待妖族的事...")
+        for _ in range(30):
+            if stop_event.is_set():
+                return
+            shot = _screenshot_gray()
+            found = False
+            for i, rect in enumerate(REGIONS):
+                r = _match_in_region(shot, TPL['yaozuodeshi'], rect)
+                if r:
+                    safe_click(r[0], r[1])
+                    log(f"窗口{i+1} 点击妖族的事 ({r[0]},{r[1]})")
+                    found = True
+                    time.sleep(0.3)
+            if found:
+                break
+            if _wait(3, stop_event):
+                return
 
-    # 第5步：循环找进入战斗和秘境降妖
+        if _wait(2, stop_event):
+            return
+
+        # 第4步：全屏截图，点继续
+        shot = _screenshot_gray()
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['jixu'], rect)
+            if r:
+                safe_click(r[0], r[1])
+                log(f"窗口{i+1} 点击继续 ({r[0]},{r[1]})")
+            time.sleep(0.3)
+
+        if _wait(2, stop_event):
+            return
+    else:
+        log("所有窗口都未找到活动按钮，直接进入战斗循环")
+
+    # 第5步：循环找进入战斗和秘境降妖，检测失败标志
     log("等待秘境战斗...")
+    done_windows = set()
     while not stop_event.is_set():
         shot = _screenshot_gray()
-        found = False
+
+        # 检测失败标志，已完成的跳过
+        for i, rect in enumerate(REGIONS):
+            if i in done_windows:
+                continue
+            r = _match_in_region(shot, TPL['shibai'], rect)
+            if r:
+                log(f"窗口{i+1} 秘境已完成（检测到失败标志）")
+                done_windows.add(i)
+
+        if len(done_windows) == len(REGIONS):
+            log("秘境任务全部完成，点击所有失败标志")
+            for i, rect in enumerate(REGIONS):
+                r = _match_in_region(shot, TPL['shibai'], rect)
+                if r:
+                    safe_click(r[0], r[1])
+                    log(f"窗口{i+1} 点击失败标志 ({r[0]},{r[1]})")
+                    time.sleep(0.3)
+
+            # 点击5个离开
+            if _wait(1, stop_event):
+                break
+            shot = _screenshot_gray()
+            for i, rect in enumerate(REGIONS):
+                r = _match_in_region(shot, TPL['likai'], rect)
+                if r:
+                    safe_click(r[0], r[1])
+                    log(f"窗口{i+1} 点击离开 ({r[0]},{r[1]})")
+                    time.sleep(0.3)
+            break
 
         # 找进入战斗
+        found = False
         for i, rect in enumerate(REGIONS):
+            if i in done_windows:
+                continue
             r = _match_in_region(shot, TPL['jinruzhandou'], rect, yuzhi=0.55)
             if r:
                 safe_click(r[0], r[1])
@@ -102,6 +141,8 @@ def mijing_start(stop_event):
             # 找秘境降妖
             shot = _screenshot_gray()
             for i, rect in enumerate(REGIONS):
+                if i in done_windows:
+                    continue
                 r = _match_in_region(shot, TPL['mijingxiangyao'], rect, yuzhi=0.5)
                 if r:
                     safe_click(r[0], r[1])

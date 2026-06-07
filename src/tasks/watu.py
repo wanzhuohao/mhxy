@@ -14,13 +14,16 @@ def watu_start(stop_event):
     # 第1步：全屏截图，找5个窗口的包裹按钮
     shot = _screenshot_gray()
     found_baoguo = []
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['baoguo'], rect)
         if r:
             found_baoguo.append((i, r))
         else:
             log(f"窗口{i+1}：未找到包裹按钮", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到包裹按钮")
+            missing.append(f"窗口{i+1}")
+    if missing:
+        send_feishu_msg(f"⚠️ 挖图：{','.join(missing)} 未找到包裹按钮")
 
     if not found_baoguo:
         log("所有窗口都未找到包裹按钮", "WARN")
@@ -37,6 +40,7 @@ def watu_start(stop_event):
 
     # 第2步：全屏截图，找整理按钮并点击
     shot = _screenshot_gray()
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['zhengli'], rect)
         if r:
@@ -44,8 +48,10 @@ def watu_start(stop_event):
             log(f"窗口{i+1} 点击整理 ({r[0]},{r[1]})")
         else:
             log(f"窗口{i+1}：未找到整理按钮", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到整理按钮")
+            missing.append(f"窗口{i+1}")
         time.sleep(0.3)
+    if missing:
+        send_feishu_msg(f"⚠️ 挖图：{','.join(missing)} 未找到整理按钮")
 
     if _wait(2, stop_event):
         return
@@ -53,13 +59,16 @@ def watu_start(stop_event):
     # 第3步：全屏截图，找宝图按钮并点击
     shot = _screenshot_gray()
     found_baotu = []
+    missing = []
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['watu_baotu'], rect)
         if r:
             found_baotu.append((i, r))
         else:
             log(f"窗口{i+1}：未找到宝图", "WARN")
-            send_feishu_msg(f"⚠️ 窗口{i+1}未找到宝图")
+            missing.append(f"窗口{i+1}")
+    if missing:
+        send_feishu_msg(f"⚠️ 挖图：{','.join(missing)} 未找到宝图")
 
     for i, (cx, cy, val) in found_baotu:
         import pyautogui
