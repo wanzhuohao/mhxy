@@ -19,20 +19,23 @@ import notify
 from tasks import TASK_FUNCS, INDEPENDENT_TASKS, TEAM_TASKS
 
 
-# ========== 颜色主题 ==========
-C_BG = "#2b2b2b"           # 主背景
-C_FRAME = "#353535"         # 面板背景
-C_BTN = "#4a6fa5"           # 普通按钮
-C_BTN_HOVER = "#5a8fd5"     # 按钮悬停
-C_BTN_STOP = "#c0392b"      # 停止按钮
-C_BTN_STOP_HOVER = "#e74c3c"
-C_BTN_SPECIAL = "#27ae60"   # 特殊按钮（工具类）
-C_BTN_SPECIAL_HOVER = "#2ecc71"
-C_TASK = "#d4760a"          # 任务按钮（受窗口选择影响）
-C_TASK_HOVER = "#e8941e"
-C_TEXT = "#ecf0f1"          # 文字
-C_BORDER = "#555555"        # 边框
-C_TITLE_BG = "#1a1a2e"      # 标题栏
+# ========== 颜色主题（深色游戏风） ==========
+C_BG = "#1a1a2e"            # 主背景（深海蓝）
+C_FRAME = "#16213e"         # 面板背景
+C_BTN = "#0f3460"           # 普通按钮（靛蓝）
+C_BTN_HOVER = "#1a5276"     # 按钮悬停
+C_BTN_STOP = "#e74c3c"      # 停止按钮（朱红）
+C_BTN_STOP_HOVER = "#ff6b6b"
+C_BTN_SPECIAL = "#00b894"   # 特殊按钮（薄荷绿）
+C_BTN_SPECIAL_HOVER = "#00cec9"
+C_TASK = "#e17055"          # 任务按钮（珊瑚橙）
+C_TASK_HOVER = "#fab1a0"
+C_ALL_IN_ONE = "#0984e3"    # 一条龙按钮（宝石蓝）
+C_ALL_IN_ONE_HOVER = "#74b9ff"
+C_TASK_HIGHLIGHT = "#6c5ce7" # 中途继续高亮（星空紫）
+C_TEXT = "#dfe6e9"          # 文字（月光白）
+C_BORDER = "#2d3436"        # 边框
+C_TITLE_BG = "#0c0c1d"      # 标题栏（深夜）
 
 
 class GameLauncherApp:
@@ -56,13 +59,13 @@ class GameLauncherApp:
 
         # 任务配置：(名称, 显示文本, 行, 列)
         self.TASK_DEFS = [
-            ('shimen',  '师门', 0, 0),
-            ('baotu',   '宝图', 0, 1),
-            ('zhuogui', '捉鬼', 1, 0),
-            ('fuben',   '副本', 1, 1),
+            ('fuben',   '副本', 0, 0),
+            ('zhuogui', '捉鬼', 0, 1),
+            ('shimen',  '师门', 1, 0),
+            ('baotu',   '宝图', 1, 1),
             ('mijing',  '秘境', 2, 0),
-            ('yabiao',  '押镖', 2, 1),
-            ('watu',    '挖图', 3, 0),
+            ('watu',    '挖图', 2, 1),
+            ('yabiao',  '押镖', 3, 0),
             ('dati',    '答题', 3, 1),
         ]
 
@@ -70,6 +73,7 @@ class GameLauncherApp:
         self.task_stop_events = {}  # 每个任务的 stop_event
         self.task_windows = {}      # 跟踪每个任务运行在哪些窗口
         self.arrange_index = 0
+        self._selecting_start_step = False  # 中途继续选择模式
 
         self._build_ui()
         self._check_launcher()
@@ -190,11 +194,16 @@ class GameLauncherApp:
             self.task_running[name] = False
         r += 4
 
-        # 一条龙 / 停止
-        self._make_btn(btn_frame, "一条龙", self.all_in_one, C_TASK, C_TASK_HOVER).grid(
+        # 一条龙 / 中途继续
+        self._make_btn(btn_frame, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
             row=r, column=0, padx=2, pady=1, sticky='ew')
+        self._midway_btn = self._make_btn(btn_frame, "中途继续", self._toggle_midway, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER)
+        self._midway_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
+        r += 1
+
+        # 停止
         self.stop_btn = self._make_btn(btn_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
-        self.stop_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
+        self.stop_btn.grid(row=r, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
 
     def _check_launcher(self):
         if not os.path.exists(self.game_launcher_path):
@@ -350,6 +359,16 @@ class GameLauncherApp:
 
     def toggle_task(self, name, rounds=None):
         """启动/停止任务，rounds 可指定轮数"""
+        # 中途继续模式：点击黄色按钮从该任务开始一条龙
+        if self._selecting_start_step:
+            self._selecting_start_step = False
+            self._midway_btn.config(text="中途继续")
+            # 恢复黄色按钮原色
+            for n in self.task_buttons:
+                self._set_btn_idle(n)
+            self._start_all_in_one_from(name)
+            return
+
         btn = self.task_buttons[name]
         btn.config(state=tk.DISABLED)
         self.root.after(300, lambda: btn.config(state=tk.NORMAL))
@@ -442,6 +461,27 @@ class GameLauncherApp:
         btn.bind('<Enter>', lambda e, b=btn: b.config(bg=C_TASK_HOVER))
         btn.bind('<Leave>', lambda e, b=btn: b.config(bg=C_TASK))
 
+    def _set_btn_current(self, name):
+        """一条龙当前执行的按钮（粉色高亮）"""
+        btn = self.task_buttons[name]
+        text = self._get_display_name(name)
+        btn.config(text=f"▶ {text}", bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT)
+        btn.unbind('<Enter>')
+        btn.unbind('<Leave>')
+
+    def _set_btn_done(self, name):
+        """一条龙已完成的按钮（绿色）"""
+        btn = self.task_buttons[name]
+        text = self._get_display_name(name)
+        btn.config(text=f"✓ {text}", bg=C_BTN_SPECIAL, activebackground=C_BTN_SPECIAL_HOVER)
+        btn.unbind('<Enter>')
+        btn.unbind('<Leave>')
+
+    def _reset_all_task_btns(self):
+        """恢复所有任务按钮原色"""
+        for name in self.task_buttons:
+            self._set_btn_idle(name)
+
     def _get_display_name(self, name):
         for n, text, *_ in self.TASK_DEFS:
             if n == name:
@@ -480,93 +520,119 @@ class GameLauncherApp:
         w, h = rect[2] - rect[0], rect[3] - rect[1]
         messagebox.showinfo("窗口分辨率", f"{w}x{h}")
 
+    def _toggle_midway(self):
+        """切换中途继续选择模式"""
+        if self._selecting_start_step:
+            self._selecting_start_step = False
+            self._midway_btn.config(text="中途继续")
+            # 恢复黄色按钮原色
+            for name in self.task_buttons:
+                self._set_btn_idle(name)
+            log("已取消中途继续选择")
+        else:
+            self._selecting_start_step = True
+            self._midway_btn.config(text="★ 选择中")
+            # 高亮黄色按钮，禁用悬停效果
+            for btn in self.task_buttons.values():
+                btn.config(bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT)
+                btn.unbind('<Enter>')
+                btn.unbind('<Leave>')
+            log("请点击要开始的黄色任务按钮")
+
+    def _start_all_in_one_from(self, start_name):
+        """从指定任务开始一条龙"""
+        windows = self._get_game_windows()
+        if not windows:
+            log("未找到游戏窗口", "WARN")
+            return
+        log(f"中途继续一条龙，从 {start_name} 起")
+        stop_event = threading.Event()
+        self.task_stop_events['all_in_one'] = stop_event
+        threading.Thread(target=self._all_in_one_thread, args=(windows, stop_event, start_name), daemon=True).start()
+
     def all_in_one(self):
-        """一条龙：在选定窗口上执行 师门→宝图→挖图→秘境→押镖"""
+        """一条龙：组队→副本x2→捉鬼→师门→宝图→秘境→挖图→押镖→答题→领取奖励"""
         windows = self._get_game_windows()
         if not windows:
             log("未找到游戏窗口", "WARN")
             return
 
         log("开始一条龙")
+        # 高亮所有任务按钮
+        for btn in self.task_buttons.values():
+            btn.config(bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT)
+            btn.unbind('<Enter>')
+            btn.unbind('<Leave>')
         stop_event = threading.Event()
         self.task_stop_events['all_in_one'] = stop_event
         threading.Thread(target=self._all_in_one_thread, args=(windows, stop_event), daemon=True).start()
 
-    def _all_in_one_thread(self, windows, stop_event):
-        """一条龙：组队→副本x2→捉鬼(含解散)→师门→宝图→挖图→秘境→押镖→答题"""
-        log("一条龙任务开始")
+    # 一条龙步骤顺序：(任务名, 显示名, 轮数)
+    _ALL_IN_ONE_STEPS = [
+        ('zhuogui', '捉鬼', 2),
+        ('shimen',  '师门', None),
+        ('baotu',   '宝图', None),
+        ('mijing',  '秘境', None),
+        ('watu',    '挖图', None),
+        ('yabiao',  '押镖', None),
+        ('dati',    '答题', None),
+    ]
 
-        # 第1步：组队（只在窗口1执行）
-        if stop_event.is_set():
-            return
-        log("── 组队 开始 ──")
-        self.create_team()
-
-        # 第2步：副本x2
-        for i in range(2):
-            if stop_event.is_set():
-                break
-            log(f"── 副本 第{i+1}次 开始 ──")
-            func = TASK_FUNCS['fuben']
-            hwnd, rect = windows[0]
-            self._run_single_task(hwnd, rect, func, stop_event)
-
-        # 第3步：捉鬼（含自动解散）
-        if stop_event.is_set():
-            return
-        log("── 捉鬼 开始 ──")
-        func = TASK_FUNCS['zhuogui']
+    def _all_in_one_thread(self, windows, stop_event, start_from=None):
+        """一条龙：组队→副本x2→捉鬼(含解散)→师门→宝图→秘境→挖图→押镖→答题→领取奖励"""
+        started = start_from is None
         hwnd, rect = windows[0]
-        self._run_single_task(hwnd, rect, func, stop_event, rounds=2)
 
-        # 第4步：师门
-        if stop_event.is_set():
-            return
-        log("── 师门 开始 ──")
-        func = TASK_FUNCS['shimen']
-        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+        # 组队
+        if not started:
+            if 'zhuogui' == start_from:
+                started = True
+            else:
+                pass  # 跳过组队
+        if started and not stop_event.is_set():
+            log("── 组队 开始 ──")
+            self.root.after(0, lambda: self._set_btn_current('zhuogui'))
+            self.create_team()
+            time.sleep(2)
 
-        # 第5步：宝图
-        if stop_event.is_set():
-            return
-        log("── 宝图 开始 ──")
-        func = TASK_FUNCS['baotu']
-        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+        # 副本x2
+        if started and not stop_event.is_set():
+            for i in range(2):
+                if stop_event.is_set():
+                    break
+                log(f"── 副本 第{i+1}次 开始 ──")
+                task_stop = threading.Event()
+                self.task_stop_events['all_in_one_current'] = task_stop
+                self._run_single_task(hwnd, rect, TASK_FUNCS['fuben'], task_stop)
 
-        # 第6步：秘境
-        if stop_event.is_set():
-            return
-        log("── 秘境 开始 ──")
-        func = TASK_FUNCS['mijing']
-        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
+        # 按顺序执行任务
+        for task_name, display, rounds in self._ALL_IN_ONE_STEPS:
+            if not started:
+                if task_name == start_from:
+                    started = True
+                    # 中途继续捉鬼只跑1轮
+                    if task_name == 'zhuogui':
+                        rounds = 1
+                else:
+                    continue
+            if stop_event.is_set():
+                return
+            log(f"── {display} 开始 ──")
+            self.root.after(0, lambda n=task_name: self._set_btn_current(n))
+            func = TASK_FUNCS[task_name]
+            task_stop = threading.Event()
+            self.task_stop_events['all_in_one_current'] = task_stop
+            self._run_single_task(hwnd, rect, func, task_stop, rounds=rounds)
+            if stop_event.is_set():
+                return
+            self.root.after(0, lambda n=task_name: self._set_btn_done(n))
 
-        # 第7步：挖图
-        if stop_event.is_set():
-            return
-        log("── 挖图 开始 ──")
-        func = TASK_FUNCS['watu']
-        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
-
-        # 第8步：押镖
-        if stop_event.is_set():
-            return
-        log("── 押镖 开始 ──")
-        func = TASK_FUNCS['yabiao']
-        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
-
-        # 第9步：答题
-        if stop_event.is_set():
-            return
-        log("── 答题 开始 ──")
-        func = TASK_FUNCS['dati']
-        self._run_single_task(windows[0][0], windows[0][1], func, stop_event)
-
-        # 第10步：领取奖励
+        # 领取奖励
         if stop_event.is_set():
             return
         log("── 领取奖励 ──")
         import core
-        shot = core._screenshot_gray()
+        shot = core._screenshot_gray(full=True)
         # 找活动按钮并点击
         for hwnd, rect in windows[:5]:
             r = core._match_in_region(shot, core.TPL['huodong'], rect)
@@ -590,6 +656,8 @@ class GameLauncherApp:
 
         log("一条龙任务完成")
         notify.send_feishu_msg("✅ 一条龙任务完成")
+        # 恢复所有按钮原色
+        self.root.after(0, self._reset_all_task_btns)
         self.task_stop_events.pop('all_in_one', None)
         log("一条龙全部完成")
 
