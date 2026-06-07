@@ -59,7 +59,6 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
 
             count += 1
             log(f"第{count}轮捉鬼")
-            send_feishu_msg(f"完成第{count}轮捉鬼")
             if count >= rounds:
                 log(f"捉鬼{rounds}轮已完成")
                 # 点 (350, 392) 退出

@@ -10,10 +10,10 @@ from tasks.dati import dati_start
 from tasks.zhuogui import zhuogui_start
 
 # 独立型任务：每个窗口各跑各的
-INDEPENDENT_TASKS = {'shimen', 'baotu', 'watu', 'mijing', 'yabiao', 'dati'}
+INDEPENDENT_TASKS = {'mijing', 'yabiao', 'dati'}
 
-# 组队型任务：只在窗口 1（队长）执行
-TEAM_TASKS = {'fuben', 'zhuogui'}
+# 组队型任务：全屏截图模式，只执行一次
+TEAM_TASKS = {'fuben', 'zhuogui', 'shimen', 'baotu', 'watu'}
 
 TASK_FUNCS = {
     'shimen': shimen_start,
