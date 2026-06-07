@@ -13,18 +13,21 @@ def fuben_start(stop_event: threading.Event):
     """副本：跳过剧情、确定、战斗坐标"""
     log("副本任务开始")
 
+    # 固定窗口1坐标
+    rect = (0, 0, 870, 692)
+
     # 第1步：点活动（没找到则跳过，直接进主循环）
-    if find_and_click(TPL['huodong']):
+    if find_and_click(TPL['huodong'], region=rect):
         log("点击活动")
         if _wait(2, stop_event):
             return
 
         # 第2步：点普通右边的按钮（未找到则点击重试）
-        if not _retry(lambda: find_and_click(TPL['putong'], dx=100)):
+        if not _retry(lambda: find_and_click(TPL['putong'], dx=100, region=rect)):
             safe_click(132, 188)
             if _wait(3, stop_event):
                 return
-            if not _retry(lambda: find_and_click(TPL['putong'], dx=100)):
+            if not _retry(lambda: find_and_click(TPL['putong'], dx=100, region=rect)):
                 log("副本：未找到普通按钮", "WARN")
                 send_feishu_msg("⚠️ 副本：未找到普通按钮")
                 return
@@ -33,7 +36,7 @@ def fuben_start(stop_event: threading.Event):
 
         # 第3步：轮询等待选择副本并点击
         for _ in range(15):
-            if find_and_click(TPL['xuanzefuben']):
+            if find_and_click(TPL['xuanzefuben'], region=rect):
                 log("点击选择副本")
                 break
             if _wait(1, stop_event):
@@ -48,7 +51,7 @@ def fuben_start(stop_event: threading.Event):
         # 第4步：找进入按钮，轮流点击
         global _jinru_index
         for _ in range(15):
-            points = find_all(TPL['jinru'])
+            points = find_all(TPL['jinru'], region=rect)
             if points:
                 idx = _jinru_index % len(points)
                 x, y = int(points[idx][0]), int(points[idx][1])
@@ -67,8 +70,6 @@ def fuben_start(stop_event: threading.Event):
     else:
         log("未找到活动按钮，跳过准备步骤，直接进副本主循环")
 
-    # 固定窗口1坐标（2560×1440分辨率，窗口870×692）
-    rect = (0, 0, 870, 692)
     ox, oy = rect[0], rect[1]
     try:
         while not stop_event.is_set():
