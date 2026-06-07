@@ -19,10 +19,15 @@ def fuben_start(stop_event: threading.Event):
         if _wait(2, stop_event):
             return
 
-        # 第2步：点普通右边的按钮
-        if not _retry(lambda: find_and_click(TPL['putong'], dx=100), label="点普通右边"):
-            log("副本：未找到普通按钮", "WARN")
-            return
+        # 第2步：点普通右边的按钮（未找到则点击重试）
+        if not _retry(lambda: find_and_click(TPL['putong'], dx=100)):
+            safe_click(132, 188)
+            if _wait(3, stop_event):
+                return
+            if not _retry(lambda: find_and_click(TPL['putong'], dx=100)):
+                log("副本：未找到普通按钮", "WARN")
+                send_feishu_msg("⚠️ 副本：未找到普通按钮")
+                return
         if _wait(2, stop_event):
             return
 
@@ -35,6 +40,7 @@ def fuben_start(stop_event: threading.Event):
                 return
         else:
             log("副本：未找到选择副本按钮", "WARN")
+            send_feishu_msg("⚠️ 副本：未找到选择副本按钮")
             return
         if _wait(2, stop_event):
             return
@@ -54,6 +60,7 @@ def fuben_start(stop_event: threading.Event):
                 return
         else:
             log("副本：未找到进入按钮", "WARN")
+            send_feishu_msg("⚠️ 副本：未找到进入按钮")
             return
         if _wait(2, stop_event):
             return
@@ -66,21 +73,31 @@ def fuben_start(stop_event: threading.Event):
     try:
         while not stop_event.is_set():
             # 检测已完成，直接点击
-            if find_and_click(TPL['yiwancheng'], yuzhi=0.5, region=rect):
+            if find_and_click(TPL['yiwancheng'], yuzhi=0.8, region=rect):
                 log("点击已完成，副本结束")
                 break
 
-            if _retry(lambda: find_and_click_path('fubentiaoguo.bmp', yuzhi=0.65, region=rect), label="副本跳过"):
-                if _wait(5, stop_event):
-                    break
-                dx, dy = random.randint(-5, 5), random.randint(-5, 5)
-                safe_click(ox + 744 + dx, oy + 190 + dy)
-                if _wait(5, stop_event):
-                    break
-                dx, dy = random.randint(-5, 5), random.randint(-5, 5)
-                safe_click(ox + 638 + dx, oy + 510 + dy)
-                if _wait(3, stop_event):
-                    break
+            if _retry(lambda: find_and_click_path('fubentiaoguo.bmp', yuzhi=0.65, region=rect)):
+                # 跳过按钮匹配到后，轮询对话区域图片
+                for _ in range(10):
+                    if stop_event.is_set():
+                        return
+                    shot_hit = False
+                    if find_and_click(TPL['kuaijin'], yuzhi=0.65, region=rect):
+                        log("副本：点击快进")
+                        shot_hit = True
+                    if find_and_click(TPL['qingxuanze'], yuzhi=0.65, region=rect):
+                        log("副本：点击请选取")
+                        shot_hit = True
+                    if find_and_click(TPL['zhan'], yuzhi=0.65, region=rect):
+                        log("副本：点击战")
+                        shot_hit = True
+                    if shot_hit:
+                        if _wait(3, stop_event):
+                            return
+                    else:
+                        if _wait(1, stop_event):
+                            return
                 continue
             if _wait(1, stop_event):
                 break

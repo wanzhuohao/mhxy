@@ -161,23 +161,24 @@ class GameLauncherApp:
         self.topmost_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
         r += 1
 
-        # 组队 / 无限鬼
+        # 组队 / 解散队伍
         self._make_btn(btn_frame, "组  队", self.create_team, C_BTN_SPECIAL).grid(
             row=r, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(btn_frame, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
-            row=r, column=1, padx=2, pady=1, sticky='ew')
-        r += 1
-
-        # 抓点 / 分辨率
-        self._make_btn(btn_frame, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
-            row=r, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(btn_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
-            row=r, column=1, padx=2, pady=1, sticky='ew')
-        r += 1
-
-        # 解散队伍
         self._make_btn(btn_frame, "解散队伍", self.disband_team, C_BTN_SPECIAL).grid(
-            row=r, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
+            row=r, column=1, padx=2, pady=1, sticky='ew')
+        r += 1
+
+        # 无限鬼 / 抓点+分辨率（半宽）
+        self._make_btn(btn_frame, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
+            row=r, column=0, padx=2, pady=1, sticky='ew')
+        half_frame = tk.Frame(btn_frame, bg=C_BG)
+        half_frame.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
+        half_frame.columnconfigure(0, weight=1)
+        half_frame.columnconfigure(1, weight=1)
+        self._make_btn(half_frame, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
+            row=0, column=0, padx=1, sticky='ew')
+        self._make_btn(half_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
+            row=0, column=1, padx=1, sticky='ew')
         r += 1
 
         # 任务按钮（橙色）

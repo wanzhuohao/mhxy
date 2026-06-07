@@ -33,10 +33,14 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
         if _wait(2, stop_event):
             return
 
-        # 第2步：点捉鬼右边的按钮
-        if not _retry(lambda: find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10), label="点捉鬼右边"):
-            log("捉鬼：未找到捉鬼按钮", "WARN")
-            return
+        # 第2步：点捉鬼右边的按钮（未找到则点击重试）
+        if not _retry(lambda: find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10)):
+            safe_click(132, 188)
+            if _wait(3, stop_event):
+                return
+            if not _retry(lambda: find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10)):
+                log("捉鬼：未找到捉鬼按钮", "WARN")
+                return
         if _wait(2, stop_event):
             return
     else:
@@ -60,7 +64,8 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
 
             count += 1
             log(f"第{count}轮捉鬼")
-            send_feishu_msg(f"完成第{count}轮捉鬼")
+            if not skip_click:
+                send_feishu_msg(f"完成第{count}轮捉鬼")
             if count >= rounds:
                 log(f"捉鬼{rounds}轮已完成")
                 # 点 (350, 392) 退出

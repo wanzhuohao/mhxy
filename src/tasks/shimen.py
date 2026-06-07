@@ -28,6 +28,20 @@ def _match_in_region(shot_full, template, region, yuzhi=0.8):
     return None
 
 
+def _retry_click_activity(missing_indices, stop_event):
+    """对未找到按钮的窗口点击 (132,188) 重试，返回新截图"""
+    if not missing_indices:
+        return None
+    for i in missing_indices:
+        x0, y0 = REGIONS[i][0], REGIONS[i][1]
+        safe_click(x0 + 132, y0 + 188)
+        log(f"窗口{i+1} 点击重试 ({x0+132},{y0+188})")
+        time.sleep(0.3)
+    if _wait(3, stop_event):
+        return None
+    return _screenshot_gray()
+
+
 def shimen_start(stop_event: threading.Event):
     """师门：全屏截图 → 分区域找活动/师门 → 逐窗口去完成"""
     log("师门任务开始")
@@ -69,10 +83,24 @@ def shimen_start(stop_event: threading.Event):
         if r:
             found_shimen.append((i, r))
         else:
-            log(f"窗口{i+1}：未找到师门按钮", "WARN")
-            missing.append(f"窗口{i+1}")
+            missing.append(i)
+
+    # 未找到的窗口点击重试
     if missing:
-        send_feishu_msg(f"⚠️ 师门：{','.join(missing)} 未找到师门按钮")
+        shot = _retry_click_activity(missing, stop_event) or shot
+        still_missing = []
+        for i in missing:
+            r = _match_in_region(shot, TPL['huodongshimen'], REGIONS[i])
+            if r:
+                found_shimen.append((i, r))
+            else:
+                still_missing.append(i)
+        missing = still_missing
+
+    if missing:
+        for i in missing:
+            log(f"窗口{i+1}：未找到师门按钮", "WARN")
+        send_feishu_msg(f"⚠️ 师门：{','.join(f'窗口{i+1}' for i in missing)} 未找到师门按钮")
 
     # 点击师门右边
     for i, (cx, cy, val) in found_shimen:
