@@ -91,15 +91,20 @@ FUBEN_REGION = (0, 0, 2600, 1440)
 
 # ========== 截图 + 匹配 ==========
 
-def _screenshot_gray(region=None):
-    """mss 截图，自动使用线程窗口区域"""
-    if region is None:
+def _screenshot_gray(region=None, full=False):
+    """mss 截图。full=True 强制全屏，不使用线程窗口区域"""
+    if full:
+        monitor = _sct.monitors[0]
+    elif region is None:
         region = get_window_rect()
-    if region:
+        if region:
+            monitor = {"left": region[0], "top": region[1],
+                       "width": region[2], "height": region[3]}
+        else:
+            monitor = _sct.monitors[0]
+    else:
         monitor = {"left": region[0], "top": region[1],
                    "width": region[2], "height": region[3]}
-    else:
-        monitor = _sct.monitors[0]
     with _sct_lock:
         shot = _sct.grab(monitor)
     arr = np.array(shot)[:, :, :3]

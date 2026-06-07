@@ -12,7 +12,7 @@ def yabiao_start(stop_event):
     log("押镖任务开始")
 
     # 第1步：全屏截图，找5个窗口的活动按钮
-    shot = _screenshot_gray()
+    shot = _screenshot_gray(full=True)
     found_activity = []
     missing = []
     for i, rect in enumerate(REGIONS):
@@ -35,7 +35,7 @@ def yabiao_start(stop_event):
             return
 
         # 第2步：全屏截图，找运镖按钮并点击右边（dx=230, dy=10）
-        shot = _screenshot_gray()
+        shot = _screenshot_gray(full=True)
         found_yunbiao = []
         missing = []
         for i, rect in enumerate(REGIONS):
@@ -74,7 +74,7 @@ def yabiao_start(stop_event):
 
     # 第3步：循环找运送镖银 → 确定
     while not stop_event.is_set():
-        shot = _screenshot_gray()
+        shot = _screenshot_gray(full=True)
         found_any = False
 
         # 检测天梯弹窗，点击x关闭
@@ -102,7 +102,7 @@ def yabiao_start(stop_event):
             break
 
         # 找确定并点击
-        shot = _screenshot_gray()
+        shot = _screenshot_gray(full=True)
         for i, rect in enumerate(REGIONS):
             r = _match_in_region(shot, TPL['queding'], rect)
             if r:
@@ -113,7 +113,7 @@ def yabiao_start(stop_event):
 
         # 判断结束：有5个活动按钮且没有确定/运送镖银
         if not found_any:
-            shot = _screenshot_gray()
+            shot = _screenshot_gray(full=True)
             activity_count = 0
             for i, rect in enumerate(REGIONS):
                 r = _match_in_region(shot, TPL['huodong'], rect)

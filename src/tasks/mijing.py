@@ -12,7 +12,7 @@ def mijing_start(stop_event):
     log("秘境任务开始")
 
     # 第1步：全屏截图，找5个窗口的活动按钮
-    shot = _screenshot_gray()
+    shot = _screenshot_gray(full=True)
     found_activity = []
     missing = []
     for i, rect in enumerate(REGIONS):
@@ -36,7 +36,7 @@ def mijing_start(stop_event):
             return
 
         # 第2步：全屏截图，找秘境按钮并点击右边
-        shot = _screenshot_gray()
+        shot = _screenshot_gray(full=True)
         found_mijing = []
         missing = []
         for i, rect in enumerate(REGIONS):
@@ -76,7 +76,7 @@ def mijing_start(stop_event):
         for _ in range(30):
             if stop_event.is_set():
                 return
-            shot = _screenshot_gray()
+            shot = _screenshot_gray(full=True)
             found = False
             for i, rect in enumerate(REGIONS):
                 r = _match_in_region(shot, TPL['yaozuodeshi'], rect)
@@ -94,7 +94,7 @@ def mijing_start(stop_event):
             return
 
         # 第4步：全屏截图，点继续
-        shot = _screenshot_gray()
+        shot = _screenshot_gray(full=True)
         for i, rect in enumerate(REGIONS):
             r = _match_in_region(shot, TPL['jixu'], rect)
             if r:
@@ -111,7 +111,7 @@ def mijing_start(stop_event):
     log("等待秘境战斗...")
     done_windows = set()
     while not stop_event.is_set():
-        shot = _screenshot_gray()
+        shot = _screenshot_gray(full=True)
 
         # 检测失败标志，已完成的跳过
         for i, rect in enumerate(REGIONS):
@@ -134,7 +134,7 @@ def mijing_start(stop_event):
             # 点击5个离开
             if _wait(1, stop_event):
                 break
-            shot = _screenshot_gray()
+            shot = _screenshot_gray(full=True)
             for i, rect in enumerate(REGIONS):
                 r = _match_in_region(shot, TPL['likai'], rect)
                 if r:
@@ -157,7 +157,7 @@ def mijing_start(stop_event):
 
         if not found:
             # 找秘境降妖
-            shot = _screenshot_gray()
+            shot = _screenshot_gray(full=True)
             for i, rect in enumerate(REGIONS):
                 if i in done_windows:
                     continue

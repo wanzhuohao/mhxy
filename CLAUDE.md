@@ -66,3 +66,10 @@ npm install -g @anthropic-ai/lark-cli
 ## 使用方式
 
 运行 `src/mhxy.py` 启动 GUI 界面，选择功能后自动执行。
+
+## 注意事项（Claude Code）
+
+- **启动新 GUI 前必须先杀掉旧进程**：每次运行 `python mhxy.py` 之前，先执行以下命令杀掉旧进程（taskkill 在 bash 中不生效，必须用 wmic）：
+  ```
+  wmic process where "name='python.exe' and commandline like '%mhxy%'" call terminate
+  ```
