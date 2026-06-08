@@ -141,7 +141,12 @@ def shimen_start(stop_event: threading.Event):
             completed[i] += 1
 
         # 等待完成
-        _wait_completion_all(stop_event, found_qu, task_num, completed)
+        all_done = _wait_completion_all(stop_event, found_qu, task_num, completed)
+
+        # 如果所有窗口都已完成（没有第2轮），直接结束，不再检测下一轮
+        if all_done:
+            log("所有窗口师门任务已完成，无后续任务")
+            break
 
     # 汇总
     total = sum(completed)
@@ -149,7 +154,7 @@ def shimen_start(stop_event: threading.Event):
 
 
 def _wait_completion_all(stop_event, found_qu, task_num, completed):
-    """等待所有窗口的师门任务完成"""
+    """等待所有窗口的师门任务完成，返回是否全部完成"""
     timeout = 900
     start = time.time()
     pending = {i for i, _ in found_qu}
@@ -183,3 +188,6 @@ def _wait_completion_all(stop_event, found_qu, task_num, completed):
 
     for i in pending:
         log(f"窗口{i+1} 师门任务 {task_num} 未完成", "WARN")
+
+    # 返回是否全部完成（pending为空表示全部完成）
+    return len(pending) == 0
