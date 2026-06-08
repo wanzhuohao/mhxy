@@ -26,11 +26,11 @@ def fuben_start(stop_event: threading.Event):
             return
 
         # 第2步：点普通右边的按钮（未找到则点击重试）
-        if not _retry(lambda: find_and_click(TPL['putong'], dx=100, region=rect)):
+        if not _retry(lambda: find_and_click(TPL['putong'], dx=100, dy=10, region=rect)):
             safe_click(132, 188)
             if _wait(3, stop_event):
                 return
-            if not _retry(lambda: find_and_click(TPL['putong'], dx=100, region=rect)):
+            if not _retry(lambda: find_and_click(TPL['putong'], dx=100, dy=10, region=rect)):
                 log("副本：未找到普通按钮", "WARN")
                 send_feishu_msg("⚠️ 副本：未找到普通按钮")
                 return
@@ -87,10 +87,7 @@ def fuben_start(stop_event: threading.Event):
                     if stop_event.is_set():
                         return
                     shot_hit = False
-                    if find_and_click(TPL['kuaijin'], yuzhi=0.65, region=rect):
-                        log("[kuaijin] 副本：点击快进")
-                        shot_hit = True
-                    elif find_and_click(TPL['qingxuanze'], yuzhi=0.8, region=rect, dx=50, dy=20):
+                    if find_and_click(TPL['qingxuanze'], yuzhi=0.8, region=rect, dx=50, dy=20):
                         log("[qingxuanze] 副本：点击请选取")
                         shot_hit = True
                     elif find_and_click(TPL['zhan'], yuzhi=0.8, region=rect):
