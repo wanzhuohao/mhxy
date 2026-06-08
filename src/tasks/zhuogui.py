@@ -64,13 +64,14 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
 
             count += 1
             log(f"第{count}轮捉鬼")
+            notify_count = count if not skip_click else count - 1
             if not skip_click:
                 send_feishu_msg(f"完成第{count}轮捉鬼")
             if count >= rounds:
                 log(f"捉鬼{rounds}轮已完成")
                 # 点 (350, 392) 退出
                 safe_click(ox + 350, oy + 392)
-                send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
+                send_feishu_msg(f"✅ 捉鬼任务完成，共{notify_count}轮")
                 if stop_event.wait(2):
                     break
                 # 点队伍

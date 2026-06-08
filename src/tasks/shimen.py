@@ -119,6 +119,7 @@ def shimen_start(stop_event: threading.Event):
         # 全屏截图，找所有窗口的去完成
         shot = _screenshot_gray(full=True)
         found_qu = []
+        missing = []  # 重置 missing 列表
         for i, rect in enumerate(REGIONS):
             r = _match_in_region(shot, TPL['quwancheng'], rect, yuzhi=0.95)
             if r:

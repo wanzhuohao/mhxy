@@ -15,7 +15,7 @@ def baotu_start(stop_event):
     shot = _screenshot_gray(full=True)
     found_baotu_direct = []
     for i, rect in enumerate(REGIONS):
-        r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.70)
+        r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.65)
         if r:
             found_baotu_direct.append((i, r))
     if found_baotu_direct:
@@ -44,7 +44,7 @@ def baotu_start(stop_event):
                 shot = _screenshot_gray(full=True)
                 # 检查宝图任务按钮是否出现
                 for i, rect in enumerate(REGIONS):
-                    r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.70)
+                    r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.65)
                     if r:
                         return baotu_start(stop_event)
                 # 检查活动按钮是否出现
@@ -72,7 +72,7 @@ def baotu_start(stop_event):
         found_baotu = []
         missing = []
         for i, rect in enumerate(REGIONS):
-            r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.70)
+            r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.65)
             if r:
                 found_baotu.append((i, r))
             else:
@@ -86,7 +86,7 @@ def baotu_start(stop_event):
         still_missing = []
         for i in missing:
             rect = REGIONS[i]
-            r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.70)
+            r = _match_in_region(shot, TPL['baoturenwu'], rect, yuzhi=0.65)
             if r:
                 found_baotu.append((i, r))
             else:
@@ -111,7 +111,9 @@ def baotu_start(stop_event):
     if _wait(3, stop_event):
         return
 
-    # 第3步：全屏截图，找听听无妨并点击
+    # 第3步：等待3秒后全屏截图，找听听无妨并点击
+    log("等待3秒...")
+    time.sleep(3)
     shot = _screenshot_gray(full=True)
     found_tingting = []
     missing = []
