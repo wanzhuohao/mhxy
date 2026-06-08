@@ -13,7 +13,7 @@ def _get_window1_rect():
 
 
 def zhuogui_start(stop_event: threading.Event, rounds=2):
-    """捉鬼：检测弹窗颜色 → 点击 → 等待 → 循环"""
+    """捉鬼：点击活动进入 → 点击去接受任务 → 等待完成 → 循环指定轮数"""
     log("捉鬼任务开始")
 
     # 固定取屏幕左上角的窗口1
@@ -47,68 +47,84 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
         log("未找到活动按钮，直接检测完成图")
 
     count = 0
-    first_round = True
     try:
         while not stop_event.is_set():
-            skip_click = first_round and entered_from_activity
-            if skip_click:
-                # 从活动进入，第一次不检测
-                first_round = False
-            else:
-                # 检测完成图片
-                first_round = False
-                if not find_pic(TPL['zhuogui_wancheng'], yuzhi=0.8, region=w1_rect):
-                    if stop_event.wait(3):
-                        break
-                    continue
+            # 每轮开始：点击"去接受任务" 或 "完成图" 来开始/继续任务
+            # 第1轮从活动进入时，需要点击去接受任务
+            # 后续轮次检测到完成图后，点击完成图开始下一轮
 
-            count += 1
-            log(f"第{count}轮捉鬼")
-            notify_count = count if not skip_click else count - 1
-            if not skip_click:
-                send_feishu_msg(f"完成第{count}轮捉鬼")
-            if count >= rounds:
-                log(f"捉鬼{rounds}轮已完成")
-                # 点 (350, 392) 退出
-                safe_click(ox + 350, oy + 392)
-                send_feishu_msg(f"✅ 捉鬼任务完成，共{notify_count}轮")
-                if stop_event.wait(2):
-                    break
-                # 点队伍
-                find_and_click(TPL['duiwu'], yuzhi=0.8, region=w1_rect)
+            if count == 0 and entered_from_activity:
+                # 第1轮：从活动进入，点击去接受任务 (511, 392)
+                log("第1轮：点击去接受任务")
+                safe_click(ox + 511, oy + 392)
                 if stop_event.wait(1):
                     break
-                # 点击 (740,240) 然后 (599,299)，循环4次
-                import random as _rand
-                # 前3次: (740,240) -> (599,299) -> (511,400)
-                for _ in range(3):
-                    safe_click(ox + 740 + _rand.randint(-5, 5), oy + 240 + _rand.randint(-5, 5))
-                    if stop_event.wait(0.5):
+            else:
+                # 后续轮次：等待并检测完成图
+                log(f"等待第{count+1}轮完成图...")
+                found = False
+                # 最多等待90秒检测完成图
+                for _ in range(90):
+                    if stop_event.is_set():
+                        return
+                    if find_pic(TPL['zhuogui_wancheng'], yuzhi=0.8, region=w1_rect):
+                        found = True
                         break
-                    safe_click(ox + 599 + _rand.randint(-5, 5), oy + 299 + _rand.randint(-5, 5))
-                    if stop_event.wait(0.5):
-                        break
-                    safe_click(ox + 511 + _rand.randint(-5, 5), oy + 400 + _rand.randint(-5, 5))
-                    if stop_event.wait(0.5):
-                        break
-                # 第4次: (740,190) -> (599,248) -> (511,400)
-                safe_click(ox + 740 + _rand.randint(-5, 5), oy + 190 + _rand.randint(-5, 5))
-                if stop_event.wait(0.5):
-                    return
-                safe_click(ox + 599 + _rand.randint(-5, 5), oy + 248 + _rand.randint(-5, 5))
-                if stop_event.wait(0.5):
-                    return
-                safe_click(ox + 511 + _rand.randint(-5, 5), oy + 400 + _rand.randint(-5, 5))
-                stop_event.set()
-                break
+                    if stop_event.wait(1):
+                        return
 
-            # 第1次从活动进入不点弹窗，后续检测到完成图才点
-            if not skip_click:
+                if not found:
+                    log("未检测到完成图，继续等待...")
+                    continue
+
+                # 检测到完成图，轮数+1
+                count += 1
+                log(f"第{count}轮捉鬼完成")
+                send_feishu_msg(f"完成第{count}轮捉鬼")
+
+                # 检查是否达到目标轮数
+                if count >= rounds:
+                    log(f"捉鬼{rounds}轮已完成")
+                    # 点 (350, 392) 退出
+                    safe_click(ox + 350, oy + 392)
+                    send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
+                    if stop_event.wait(2):
+                        break
+                    # 点队伍
+                    find_and_click(TPL['duiwu'], yuzhi=0.8, region=w1_rect)
+                    if stop_event.wait(1):
+                        break
+                    # 点击 (740,240) 然后 (599,299)，循环4次
+                    import random as _rand
+                    # 前3次: (740,240) -> (599,299) -> (511,400)
+                    for _ in range(3):
+                        safe_click(ox + 740 + _rand.randint(-5, 5), oy + 240 + _rand.randint(-5, 5))
+                        if stop_event.wait(0.5):
+                            break
+                        safe_click(ox + 599 + _rand.randint(-5, 5), oy + 299 + _rand.randint(-5, 5))
+                        if stop_event.wait(0.5):
+                            break
+                        safe_click(ox + 511 + _rand.randint(-5, 5), oy + 400 + _rand.randint(-5, 5))
+                        if stop_event.wait(0.5):
+                            break
+                    # 第4次: (740,190) -> (599,248) -> (511,400)
+                    safe_click(ox + 740 + _rand.randint(-5, 5), oy + 190 + _rand.randint(-5, 5))
+                    if stop_event.wait(0.5):
+                        return
+                    safe_click(ox + 599 + _rand.randint(-5, 5), oy + 248 + _rand.randint(-5, 5))
+                    if stop_event.wait(0.5):
+                        return
+                    safe_click(ox + 511 + _rand.randint(-5, 5), oy + 400 + _rand.randint(-5, 5))
+                    stop_event.set()
+                    break
+
+                # 未达到目标轮数，点击完成图开始下一轮
+                log(f"点击完成图开始第{count+1}轮")
                 safe_click(ox + 511, oy + 392)
                 if stop_event.wait(1):
                     break
 
-            # 等10秒
+            # 等待10秒
             if stop_event.wait(10):
                 break
 
