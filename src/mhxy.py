@@ -10,6 +10,7 @@ import win32gui
 import win32con
 import win32api
 import pyautogui
+pyautogui.FAILSAFE = False
 from pynput import mouse
 
 import core
@@ -59,14 +60,18 @@ class GameLauncherApp:
 
         # 任务配置：(名称, 显示文本, 行, 列)
         self.TASK_DEFS = [
-            ('fuben',   '副本', 0, 0),
-            ('zhuogui', '捉鬼', 0, 1),
-            ('shimen',  '师门', 1, 0),
-            ('baotu',   '宝图', 1, 1),
-            ('mijing',  '秘境', 2, 0),
-            ('watu',    '挖图', 2, 1),
-            ('yabiao',  '押镖', 3, 0),
-            ('dati',    '答题', 3, 1),
+            ('zudui',     '组队',     0, 0),
+            ('fuben',     '副本',     0, 1),
+            ('zhuogui',   '捉鬼',     1, 0),
+            ('jiesan',    '解散',     1, 1),
+            ('shimen',    '师门',     2, 0),
+            ('baotu',     '宝图',     2, 1),
+            ('mijing',    '秘境',     3, 0),
+            ('watu',      '挖图',     3, 1),
+            ('yabiao',    '押镖',     4, 0),
+            ('sanjie',    '三界',     4, 1),
+            ('keju',      '科举',     5, 0),
+            ('lingjiang', '领奖',     5, 1),
         ]
 
         self.task_running = {}
@@ -165,13 +170,6 @@ class GameLauncherApp:
         self.topmost_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
         r += 1
 
-        # 组队 / 解散队伍
-        self._make_btn(btn_frame, "组  队", self.create_team, C_BTN_SPECIAL).grid(
-            row=r, column=0, padx=2, pady=1, sticky='ew')
-        self._make_btn(btn_frame, "解散队伍", self.disband_team, C_BTN_SPECIAL).grid(
-            row=r, column=1, padx=2, pady=1, sticky='ew')
-        r += 1
-
         # 无限鬼 / 抓点+分辨率（半宽）
         self._make_btn(btn_frame, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
             row=r, column=0, padx=2, pady=1, sticky='ew')
@@ -192,7 +190,7 @@ class GameLauncherApp:
             btn.grid(row=r + t_row, column=t_col, padx=2, pady=1, sticky='ew')
             self.task_buttons[name] = btn
             self.task_running[name] = False
-        r += 4
+        r += 6
 
         # 一条龙 / 中途继续
         self._make_btn(btn_frame, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
@@ -330,7 +328,7 @@ class GameLauncherApp:
         ox, oy = rect[0], rect[1]
 
         # 找队伍图片并点击
-        if not core.find_and_click(core.TPL['duiwu'], yuzhi=0.8, region=rect):
+        if not core.find_and_click(core.TPL['duiwu'], yuzhi=0.7, region=rect):
             log("未找到队伍按钮", "WARN")
             return
         log("点击队伍")
@@ -567,77 +565,76 @@ class GameLauncherApp:
         self.task_stop_events['all_in_one'] = stop_event
         threading.Thread(target=self._all_in_one_thread, args=(windows, stop_event), daemon=True).start()
 
-    # 一条龙步骤顺序：(任务名, 显示名, 轮数)
+    # 一条龙步骤顺序：(任务名, 显示名, 轮数, 类型)
     _ALL_IN_ONE_STEPS = [
-        ('zhuogui', '捉鬼', 2),
-        ('shimen',  '师门', None),
-        ('baotu',   '宝图', None),
-        ('mijing',  '秘境', None),
-        ('watu',    '挖图', None),
-        ('yabiao',  '押镖', None),
-        ('dati',    '答题', None),
+        ('zudui',     '组队',     None, 'func'),
+        ('fuben',     '副本',     None, 'func'),
+        ('fuben',     '副本',     None, 'func'),
+        ('zhuogui',   '捉鬼',     2,   'func'),
+        ('jiesan',    '解散',     None, 'func'),
+        ('shimen',    '师门',     None, 'func'),
+        ('baotu',     '宝图',     None, 'func'),
+        ('mijing',    '秘境',     None, 'func'),
+        ('watu',      '挖图',     None, 'func'),
+        ('yabiao',    '押镖',     None, 'func'),
+        ('sanjie',    '三界',     None, 'func'),
     ]
 
     def _all_in_one_thread(self, windows, stop_event, start_from=None):
-        """一条龙：组队→副本x2→捉鬼(含解散)→师门→宝图→秘境→挖图→押镖→答题→领取奖励"""
+        """一条龙：按 _ALL_IN_ONE_STEPS 顺序执行所有步骤"""
         started = start_from is None
         hwnd, rect = windows[0]
+        last_task = None
 
-        # 组队
-        if not started:
-            if 'zhuogui' == start_from:
-                started = True
-            else:
-                pass  # 跳过组队
-        if started and not stop_event.is_set():
-            log("── 组队 开始 ──")
-            self.root.after(0, lambda: self._set_btn_current('zhuogui'))
-            self.create_team()
-            time.sleep(2)
-
-        # 副本x2
-        if not started and start_from == 'fuben':
-            started = True
-        if started and not stop_event.is_set():
-            fuben_times = 1 if start_from == 'fuben' else 2
-            for i in range(fuben_times):
-                if stop_event.is_set():
-                    break
-                log(f"── 副本 第{i+1}次 开始 ──")
-                self.root.after(0, lambda: self._set_btn_current('fuben'))
-                task_stop = threading.Event()
-                self.task_stop_events['all_in_one_current'] = task_stop
-                self._run_single_task(hwnd, rect, TASK_FUNCS['fuben'], task_stop)
-                self.root.after(0, lambda: self._set_btn_done('fuben'))
-
-        # 按顺序执行任务
-        for task_name, display, rounds in self._ALL_IN_ONE_STEPS:
+        for task_name, display, rounds, step_type in self._ALL_IN_ONE_STEPS:
             if not started:
                 if task_name == start_from:
                     started = True
-                    # 中途继续捉鬼只跑1轮
-                    if task_name == 'zhuogui':
-                        rounds = 1
                 else:
+                    last_task = task_name
                     continue
             if stop_event.is_set():
                 return
+
+            # 两个副本之间加3-5秒延时
+            if last_task == 'fuben' and task_name == 'fuben':
+                delay = random.randint(3, 5)
+                log(f"副本间隔等待{delay}秒...")
+                time.sleep(delay)
+                if stop_event.is_set():
+                    return
+
             log(f"── {display} 开始 ──")
             self.root.after(0, lambda n=task_name: self._set_btn_current(n))
-            func = TASK_FUNCS[task_name]
+
             task_stop = threading.Event()
             self.task_stop_events['all_in_one_current'] = task_stop
-            self._run_single_task(hwnd, rect, func, task_stop, rounds=rounds)
+            func = TASK_FUNCS.get(task_name)
+            if func:
+                self._run_single_task(hwnd, rect, func, task_stop, rounds=rounds)
+
             if stop_event.is_set():
                 return
             self.root.after(0, lambda n=task_name: self._set_btn_done(n))
+            last_task = task_name
 
         # 领取奖励
-        if stop_event.is_set():
+        self.claim_rewards(windows, stop_event)
+
+        log("一条龙任务完成")
+        notify.send_feishu_msg("✅ 一条龙任务完成")
+        # 恢复所有按钮原色
+        self.root.after(0, self._reset_all_task_btns)
+        self.task_stop_events.pop('all_in_one', None)
+        log("一条龙全部完成")
+
+    def claim_rewards(self, windows, stop_event=None):
+        """领取奖励"""
+        if stop_event and stop_event.is_set():
             return
         log("等待5秒后领取奖励...")
         time.sleep(5)
-        if stop_event.is_set():
+        if stop_event and stop_event.is_set():
             return
         log("── 领取奖励 ──")
         import core
@@ -674,24 +671,35 @@ class GameLauncherApp:
                 time.sleep(0.3)
             time.sleep(0.5)
 
-        log("一条龙任务完成")
-        notify.send_feishu_msg("✅ 一条龙任务完成")
-        # 恢复所有按钮原色
-        self.root.after(0, self._reset_all_task_btns)
-        self.task_stop_events.pop('all_in_one', None)
-        log("一条龙全部完成")
-
     def stop_all_tasks(self):
         """停止所有任务"""
+        stopped = 0
         for name, stop_event in list(self.task_stop_events.items()):
             stop_event.set()
-        for name in self.task_running:
+            stopped += 1
+        for name in list(self.task_running.keys()):
             self.task_running[name] = False
             if name in self.task_buttons:
-                self._set_btn_idle(name)
+                self.root.after(0, lambda n=name: self._set_btn_idle(n))
         self.task_windows.clear()
         self.task_stop_events.clear()
-        log("停止完成")
+        log(f"停止完成，已停止{stopped}个任务")
+
+    def close_all_games(self):
+        """关闭所有游戏窗口"""
+        windows = self._get_game_windows()
+        if not windows:
+            log("未找到游戏窗口", "WARN")
+            return
+        count = 0
+        for hwnd, rect in windows:
+            try:
+                win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
+                count += 1
+                time.sleep(0.3)
+            except Exception as e:
+                log(f"关闭窗口出错: {e}", "ERR")
+        log(f"已关闭 {count} 个游戏窗口")
 
 
 if __name__ == "__main__":
