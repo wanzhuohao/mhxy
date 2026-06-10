@@ -49,16 +49,9 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
     count = 0
     try:
         while not stop_event.is_set():
-            # 每轮开始：点击"去接受任务" 或 "完成图" 来开始/继续任务
-            # 第1轮从活动进入时，需要点击去接受任务
-            # 后续轮次检测到完成图后，点击完成图开始下一轮
-
             if count == 0 and entered_from_activity:
-                # 第1轮：从活动进入，点击去接受任务 (511, 392)
-                log("第1轮：点击去接受任务")
-                safe_click(ox + 511, oy + 392)
-                if stop_event.wait(1):
-                    break
+                # 第1轮：从活动进入，不点去接受任务，直接等10秒→确认→等60秒→检测完成图
+                log("第1轮：从活动进入，直接开始")
             else:
                 # 后续轮次：等待并检测完成图
                 log(f"等待第{count+1}轮完成图...")
@@ -67,7 +60,7 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
                 for _ in range(90):
                     if stop_event.is_set():
                         return
-                    if find_pic(TPL['zhuogui_wancheng'], yuzhi=0.8, region=w1_rect):
+                    if find_pic(TPL['zhuogui_wancheng'], yuzhi=0.5, region=w1_rect):
                         found = True
                         break
                     if stop_event.wait(1):
@@ -88,38 +81,11 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
                     # 点 (350, 392) 退出
                     safe_click(ox + 350, oy + 392)
                     send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
-                    if stop_event.wait(2):
-                        break
-                    # 点队伍
-                    find_and_click(TPL['duiwu'], yuzhi=0.8, region=w1_rect)
-                    if stop_event.wait(1):
-                        break
-                    # 点击 (740,240) 然后 (599,299)，循环4次
-                    import random as _rand
-                    # 前3次: (740,240) -> (599,299) -> (511,400)
-                    for _ in range(3):
-                        safe_click(ox + 740 + _rand.randint(-5, 5), oy + 240 + _rand.randint(-5, 5))
-                        if stop_event.wait(0.5):
-                            break
-                        safe_click(ox + 599 + _rand.randint(-5, 5), oy + 299 + _rand.randint(-5, 5))
-                        if stop_event.wait(0.5):
-                            break
-                        safe_click(ox + 511 + _rand.randint(-5, 5), oy + 400 + _rand.randint(-5, 5))
-                        if stop_event.wait(0.5):
-                            break
-                    # 第4次: (740,190) -> (599,248) -> (511,400)
-                    safe_click(ox + 740 + _rand.randint(-5, 5), oy + 190 + _rand.randint(-5, 5))
-                    if stop_event.wait(0.5):
-                        return
-                    safe_click(ox + 599 + _rand.randint(-5, 5), oy + 248 + _rand.randint(-5, 5))
-                    if stop_event.wait(0.5):
-                        return
-                    safe_click(ox + 511 + _rand.randint(-5, 5), oy + 400 + _rand.randint(-5, 5))
                     stop_event.set()
                     break
 
-                # 未达到目标轮数，点击完成图开始下一轮
-                log(f"点击完成图开始第{count+1}轮")
+                # 未达到目标轮数，点击去接受任务开始下一轮
+                log(f"点击去接受任务开始第{count+1}轮")
                 safe_click(ox + 511, oy + 392)
                 if stop_event.wait(1):
                     break

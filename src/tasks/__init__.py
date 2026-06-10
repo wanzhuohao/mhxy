@@ -8,12 +8,17 @@ from tasks.yabiao import yabiao_start
 from tasks.fuben import fuben_start
 from tasks.dati import dati_start
 from tasks.zhuogui import zhuogui_start
+from tasks.jiesan import jiesan_start
+from tasks.zudui import zudui_start
+from tasks.sanjie import sanjie_start
+from tasks.keju import keju_start
+from tasks.lingjiang import lingjiang_start
 
 # 独立型任务：每个窗口各跑各的
-INDEPENDENT_TASKS = {'mijing', 'yabiao', 'dati'}
+INDEPENDENT_TASKS = {'mijing', 'yabiao', 'dati', 'sanjie', 'keju', 'lingjiang'}
 
 # 组队型任务：全屏截图模式，只执行一次
-TEAM_TASKS = {'fuben', 'zhuogui', 'shimen', 'baotu', 'watu'}
+TEAM_TASKS = {'fuben', 'zhuogui', 'shimen', 'baotu', 'watu', 'jiesan', 'zudui'}
 
 TASK_FUNCS = {
     'shimen': shimen_start,
@@ -24,4 +29,9 @@ TASK_FUNCS = {
     'fuben': fuben_start,
     'dati': dati_start,
     'zhuogui': zhuogui_start,
+    'jiesan': jiesan_start,
+    'zudui': zudui_start,
+    'sanjie': sanjie_start,
+    'keju': keju_start,
+    'lingjiang': lingjiang_start,
 }
