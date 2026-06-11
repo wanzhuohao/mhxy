@@ -84,6 +84,7 @@ TPL = {
     'zhan':           _load('fuben/zhan.bmp'),
     'zhuoguirenwu':   _load('zhuogui/zhuoguirenwu.bmp'),
     'zhuogui':        _load('zhuogui/zhuogui.bmp'),
+    'zhuoguiqueding': _load('zhuogui/zhuoguiqueding.bmp'),
     'zhuogui_wancheng': _load('zhuogui/wancheng.bmp'),
 }
 
@@ -148,6 +149,42 @@ def _retry_click_activity(missing_indices, stop_event):
     return _screenshot_gray(full=True)
 
 
+def _screenshot_rgb(region=None):
+    """RGB 截图，region=(x0,y0,x1,y1) 或 None 全屏"""
+    region = _resolve_region(region)
+    x0, y0, x1, y1 = region
+    w, h = x1 - x0, y1 - y0
+    with _sct_lock:
+        raw = _sct.grab({"left": x0, "top": y0, "width": w, "height": h})
+    arr = np.array(raw, dtype=np.uint8)[:, :, :3]
+    return cv2.cvtColor(arr, cv2.COLOR_BGRA2BGR)
+
+
+def get_pixel_rgb(x, y):
+    """获取屏幕绝对坐标 (x,y) 的 RGB 颜色值，返回 (R, G, B)"""
+    shot = _screenshot_rgb((x, y, x + 2, y + 2))
+    b, g, r = shot[0, 0]
+    return (int(r), int(g), int(b))
+
+
+def check_color_at(x, y, target_rgb, tolerance=30):
+    """检查屏幕绝对坐标 (x,y) 的颜色是否接近 target_rgb=(R,G,B)
+    tolerance 为 RGB 每个通道允许的最大差值"""
+    r, g, b = get_pixel_rgb(x, y)
+    tr, tg, tb = target_rgb
+    return (abs(r - tr) <= tolerance and
+            abs(g - tg) <= tolerance and
+            abs(b - tb) <= tolerance)
+
+
+def check_any_color(points, tolerance=30):
+    """检查一组点 [(x,y,target_rgb), ...]，只要有一个命中就返回 True"""
+    for x, y, target_rgb in points:
+        if check_color_at(x, y, target_rgb, tolerance):
+            return True
+    return False
+
+
 # 5个窗口区域
 REGIONS = [
     (0, 0, 870, 692),
@@ -177,6 +214,19 @@ def find_pic(template, yuzhi=0.8, region=None):
         cy = max_loc[1] + template.shape[0] // 2 + region[1]
         return (cx, cy)
     return False
+
+
+def find_pic_debug(template, yuzhi=0.8, region=None):
+    """同 find_pic，但返回 (cx, cy, max_val) 三元组，未命中返回 (None, None, max_val)
+    用于调试：打印当前匹配度，帮助判断阈值是否合理"""
+    region = _resolve_region(region)
+    shot = _screenshot_gray(region)
+    max_val, max_loc = _match(template, shot)
+    if max_val >= yuzhi:
+        cx = max_loc[0] + template.shape[1] // 2 + region[0]
+        cy = max_loc[1] + template.shape[0] // 2 + region[1]
+        return (cx, cy, max_val)
+    return (None, None, max_val)
 
 
 def find_and_click(template, yuzhi=0.8, region=None, dx=0, dy=0, rand=5):
