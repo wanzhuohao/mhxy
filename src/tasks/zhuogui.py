@@ -2,30 +2,26 @@
 
 import threading
 import time
-from core import log, get_game_windows
+from core import log, get_game_windows, REGIONS, find_pic
 from context import safe_click
 from notify import send_feishu_msg
 
 
-def _get_window1_rect():
-    """固定窗口1坐标（2560×1440分辨率，窗口870×692）"""
-    return (0, 0, 870, 692)
-
-
 def zhuogui_start(stop_event: threading.Event, rounds=2):
-    """捉鬼：点击活动进入 → 点击去接受任务 → 等待完成 → 循环指定轮数"""
+    """捉鬼：点击活动进入 → 点击去接受任务 → 等待完成 → 循环指定轮数
+
+    完成图检测：逐秒检测 TPL['zhuogui_wancheng']，每10秒打印一次当前匹配度，
+    便于调整阈值。若图片匹配一直不准，可在 debug_match.py 中测试实际匹配度。
+    """
     log("捉鬼任务开始")
 
     # 固定取屏幕左上角的窗口1
-    w1_rect = _get_window1_rect()
-    if not w1_rect:
-        log("未找到游戏窗口", "WARN")
-        return
+    w1_rect = REGIONS[0]
     ox, oy = w1_rect[0], w1_rect[1]
     log(f"窗口1 rect={w1_rect}")
 
     # 第1步：点活动
-    from core import TPL, find_pic, find_and_click, _retry, _wait
+    from core import TPL, find_and_click, _retry, _wait, find_pic_debug
     entered_from_activity = False
     if find_and_click(TPL['huodong'], region=w1_rect):
         log("点击活动")
@@ -46,45 +42,41 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
     else:
         log("未找到活动按钮，直接检测完成图")
 
+    # 完成检测：检测"捉鬼确定"按钮（1.py 原方案）
+    WANCHENG_YUZHI = 0.8
+
     count = 0
     try:
         while not stop_event.is_set():
             if count == 0 and entered_from_activity:
-                # 第1轮：从活动进入，不点去接受任务，直接等10秒→确认→等60秒→检测完成图
                 log("第1轮：从活动进入，直接开始")
             else:
-                # 后续轮次：等待并检测完成图
-                log(f"等待第{count+1}轮完成图...")
+                log(f"等待第{count+1}轮完成...")
                 found = False
-                # 最多等待90秒检测完成图
                 for _ in range(90):
                     if stop_event.is_set():
                         return
-                    if find_pic(TPL['zhuogui_wancheng'], yuzhi=0.5, region=w1_rect):
+                    if find_pic(TPL['zhuoguiqueding'], yuzhi=WANCHENG_YUZHI, region=w1_rect):
                         found = True
                         break
                     if stop_event.wait(1):
                         return
 
                 if not found:
-                    log("未检测到完成图，继续等待...")
+                    log("90秒内未检测到完成，继续下一轮")
                     continue
 
-                # 检测到完成图，轮数+1
                 count += 1
                 log(f"第{count}轮捉鬼完成")
                 send_feishu_msg(f"完成第{count}轮捉鬼")
 
-                # 检查是否达到目标轮数
                 if count >= rounds:
                     log(f"捉鬼{rounds}轮已完成")
-                    # 点 (350, 392) 退出
                     safe_click(ox + 350, oy + 392)
                     send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
                     stop_event.set()
                     break
 
-                # 未达到目标轮数，点击去接受任务开始下一轮
                 log(f"点击去接受任务开始第{count+1}轮")
                 safe_click(ox + 511, oy + 392)
                 if stop_event.wait(1):

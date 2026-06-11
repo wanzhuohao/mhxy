@@ -108,25 +108,30 @@ def _dati_keju(stop_event):
     if _wait(2, stop_event):
         return
 
-    # 第3步：每个窗口答题10次，然后点X
+    # 第3步：每个窗口累计点10次求助就停止该窗口，等所有窗口都满10次后统一点X，使用不算次数
+    help_count = {i: 0 for i in range(len(REGIONS))}
     done_windows = set()
-    count = {i: 0 for i in range(len(REGIONS))}
-    for round_num in range(10):
-        if stop_event.is_set():
+    while not stop_event.is_set():
+        if len(done_windows) == len(REGIONS):
             break
         shot = _screenshot_gray(full=True)
 
-        # 找求助1并点击（偏移 dy=-200）
+        # 找求助1并点击（偏移 dy=-200）— 求助算1次
         for i, rect in enumerate(REGIONS):
             if i in done_windows:
                 continue
             r = _match_in_region(shot, TPL['qiuzhu'], rect)
             if r:
                 safe_click(r[0], r[1] - 200)
-                log(f"窗口{i+1} 第{round_num+1}/10轮 [qiuzhu] 点击求助1")
+                help_count[i] += 1
+                log(f"窗口{i+1} 求助{help_count[i]}/10 [qiuzhu] 点击求助1")
+                if help_count[i] >= 10:
+                    done_windows.add(i)
                 time.sleep(0.3)
 
-        # 找求助2并点击（偏移 dy=-200）
+        # 找求助2并点击（偏移 dy=-200）— 求助算1次
+        if len(done_windows) == len(REGIONS):
+            break
         shot = _screenshot_gray(full=True)
         for i, rect in enumerate(REGIONS):
             if i in done_windows:
@@ -134,10 +139,15 @@ def _dati_keju(stop_event):
             r = _match_in_region(shot, TPL['qiuzhu2'], rect)
             if r:
                 safe_click(r[0], r[1] - 200)
-                log(f"窗口{i+1} 第{round_num+1}/10轮 [qiuzhu2] 点击求助2")
+                help_count[i] += 1
+                log(f"窗口{i+1} 求助{help_count[i]}/10 [qiuzhu2] 点击求助2")
+                if help_count[i] >= 10:
+                    done_windows.add(i)
                 time.sleep(0.3)
 
-        # 找使用并点击
+        # 找使用并点击 — 使用不算次数
+        if len(done_windows) == len(REGIONS):
+            break
         shot = _screenshot_gray(full=True)
         for i, rect in enumerate(REGIONS):
             if i in done_windows:
@@ -145,15 +155,14 @@ def _dati_keju(stop_event):
             r = _match_in_region(shot, TPL['shiyong'], rect, yuzhi=0.65)
             if r:
                 safe_click(r[0], r[1])
-                log(f"窗口{i+1} 第{round_num+1}/10轮 [shiyong] 点击使用")
-                count[i] += 1
+                log(f"窗口{i+1} [shiyong] 点击使用")
                 time.sleep(0.3)
 
         if _wait(1, stop_event):
             break
 
-    # 10轮结束，所有窗口点X
-    log("科举答题10轮结束，所有窗口点X")
+    # 所有窗口都满10次，统一找x点X
+    log("科举答题所有窗口求助满10次，统一点X")
     shot = _screenshot_gray(full=True)
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['dati_x'], rect)
