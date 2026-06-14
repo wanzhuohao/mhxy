@@ -43,55 +43,62 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
         log("未找到活动按钮，直接检测完成图")
 
     # 完成检测：检测"捉鬼确定"按钮（1.py 原方案）
-    WANCHENG_YUZHI = 0.8
+    WANCHENG_YUZHI = 0.7
 
     count = 0
     try:
         while not stop_event.is_set():
             if count == 0 and entered_from_activity:
-                log("第1轮：从活动进入，直接开始")
-            else:
-                log(f"等待第{count+1}轮完成...")
-                found = False
-                for _ in range(90):
-                    if stop_event.is_set():
-                        return
-                    if find_pic(TPL['zhuoguiqueding'], yuzhi=WANCHENG_YUZHI, region=w1_rect):
-                        found = True
-                        break
-                    if stop_event.wait(1):
-                        return
-
-                if not found:
-                    log("90秒内未检测到完成，继续下一轮")
-                    continue
-
-                count += 1
-                log(f"第{count}轮捉鬼完成")
-                send_feishu_msg(f"完成第{count}轮捉鬼")
-
-                if count >= rounds:
-                    log(f"捉鬼{rounds}轮已完成")
-                    safe_click(ox + 350, oy + 392)
-                    send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
-                    stop_event.set()
+                # 第1轮：从活动进入，先执行确定等操作，再开始检测完成图
+                log("第1轮：从活动进入，执行确认操作")
+                if stop_event.wait(10):
                     break
-
-                log(f"点击去接受任务开始第{count+1}轮")
-                safe_click(ox + 511, oy + 392)
+                safe_click(ox + 707, oy + 242)
                 if stop_event.wait(1):
                     break
+                _random_click(ox + 767, oy + 206, 15, 15)
+                if stop_event.wait(1):
+                    break
+                _random_click(ox + 767, oy + 206, 10, 10)
+                if stop_event.wait(1):
+                    break
+                log("第1轮确认操作完成，等待60秒后开始检测完成图")
+            else:
+                log(f"等待第{count+1}轮完成...")
 
-            # 等待10秒
+            # 先等60秒再开始检测
+            if stop_event.wait(60):
+                break
+
+            # 每60秒检测一次完成图，无上限
+            while not stop_event.is_set():
+                if find_pic(TPL['zhuoguiqueding'], yuzhi=WANCHENG_YUZHI, region=w1_rect):
+                    log(f"  ✓ 检测到捉鬼完成图！")
+                    break
+                log(f"  未检测到完成图，60秒后再检测")
+                if stop_event.wait(60):
+                    break
+
+            if stop_event.is_set():
+                break
+
+            count += 1
+            log(f"第{count}轮捉鬼完成！")
+            send_feishu_msg(f"完成第{count}轮捉鬼")
+
+            # 检测到完成图后，点击领取任务（第1轮不点，因为第1轮没检测到图片）
+            if count > 1 or not entered_from_activity:
+                safe_click(ox + 511, oy + 392)
+                log(f"点击领取任务 ({ox+511},{oy+392})")
+
+            # 等10秒 → 点确定 → 点2次按钮
             if stop_event.wait(10):
                 break
 
-            # 点击确认
             safe_click(ox + 707, oy + 242)
             if stop_event.wait(1):
                 break
 
-            # 点击两个随机位置
             _random_click(ox + 767, oy + 206, 15, 15)
             if stop_event.wait(1):
                 break
@@ -99,9 +106,14 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
             if stop_event.wait(1):
                 break
 
-            log("等待60秒后重新检测...")
-            if stop_event.wait(60):
-                break
+                if count >= rounds:
+                    log(f"捉鬼{rounds}轮已完成，退出")
+                    safe_click(ox + 350, oy + 392)
+                    send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
+                    stop_event.set()
+                    break
+
+                continue
     except Exception as e:
         log(f"捉鬼任务异常: {e}", "ERR")
         send_feishu_msg(f"❌ 捉鬼任务异常: {e}")

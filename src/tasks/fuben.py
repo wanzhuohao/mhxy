@@ -37,6 +37,12 @@ def fuben_start(stop_event: threading.Event):
         if _wait(2, stop_event):
             return
 
+        # 检测刮挂了X按钮，有则点击关闭
+        if find_and_click(TPL['guaguale_x'], yuzhi=0.8, region=rect):
+            log("[guaguale_x] 点击刮挂了关闭")
+            if _wait(2, stop_event):
+                return
+
         # 第3步：轮询等待选择副本并点击
         for _ in range(15):
             if find_and_click(TPL['xuanzefuben'], region=rect):
@@ -81,24 +87,23 @@ def fuben_start(stop_event: threading.Event):
                 log("[yiwancheng] 点击已完成，副本结束")
                 break
 
+            # 检测请选择（独立检测，不依赖跳过按钮）
+            if find_and_click(TPL['qingxuanze'], yuzhi=0.8, region=rect, dx=50, dy=20):
+                log("[qingxuanze] 副本：点击请选取")
+                _wait(2, stop_event)
+                continue
+
             if _retry(lambda: find_and_click_path('fubentiaoguo.bmp', yuzhi=0.65, region=rect)):
-                # 跳过按钮匹配到后，轮询对话区域图片
+                # 跳过按钮匹配到后，轮询战按钮
                 for _ in range(10):
                     if stop_event.is_set():
                         return
-                    shot_hit = False
-                    if find_and_click(TPL['qingxuanze'], yuzhi=0.8, region=rect, dx=50, dy=20):
-                        log("[qingxuanze] 副本：点击请选取")
-                        shot_hit = True
-                    elif find_and_click(TPL['zhan'], yuzhi=0.8, region=rect):
+                    if find_and_click(TPL['zhan'], yuzhi=0.8, region=rect, dx=-20, dy=-5):
                         log("[zhan] 副本：点击战")
-                        shot_hit = True
-                    if shot_hit:
-                        if _wait(3, stop_event):
-                            return
-                    else:
-                        if _wait(1, stop_event):
-                            return
+                        _wait(2, stop_event)
+                        break
+                    if _wait(1, stop_event):
+                        return
                 continue
             if _wait(1, stop_event):
                 break

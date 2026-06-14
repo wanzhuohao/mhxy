@@ -14,11 +14,12 @@ from tasks.sanjie import sanjie_start
 from tasks.keju import keju_start
 from tasks.lingjiang import lingjiang_start
 
-# 独立型任务：每个窗口各跑各的
-INDEPENDENT_TASKS = {'mijing', 'yabiao', 'dati', 'sanjie', 'keju', 'lingjiang'}
+# 独立型任务：每个窗口各跑各的（单个窗口处理）
+INDEPENDENT_TASKS = set()
 
-# 组队型任务：全屏截图模式，只执行一次
-TEAM_TASKS = {'fuben', 'zhuogui', 'shimen', 'baotu', 'watu', 'jiesan', 'zudui'}
+# 组队型任务：全屏截图模式，只执行一次（已包含所有窗口的逻辑）
+TEAM_TASKS = {'fuben', 'zhuogui', 'shimen', 'baotu', 'watu', 'jiesan', 'zudui', 
+              'lingjiang', 'mijing', 'yabiao', 'dati', 'sanjie', 'keju'}
 
 TASK_FUNCS = {
     'shimen': shimen_start,

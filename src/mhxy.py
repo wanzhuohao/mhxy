@@ -2,6 +2,7 @@ import subprocess
 import os
 import json
 import time
+import datetime
 import threading
 import random
 import tkinter as tk
@@ -323,15 +324,20 @@ class GameLauncherApp:
         log("组队完成")
 
     def disband_team(self):
-        """解散队伍：找队伍 → 点击操作"""
+        """解散队伍：优先找队伍图片 → 找不到再点固定位置 → 点击操作"""
         rect = (0, 0, 870, 692)
         ox, oy = rect[0], rect[1]
 
-        # 找队伍图片并点击
-        if not core.find_and_click(core.TPL['duiwu'], yuzhi=0.7, region=rect):
-            log("未找到队伍按钮", "WARN")
-            return
-        log("点击队伍")
+        # 队伍按钮固定位置 (右上角)
+        team_btn_x, team_btn_y = 755, 130
+
+        # 优先找图片匹配
+        if core.find_and_click(core.TPL['duiwu'], yuzhi=0.7, region=rect):
+            log("图片匹配成功，点击队伍")
+        else:
+            # 图片匹配失败，点击固定位置
+            log("未找到队伍按钮，点击固定位置")
+            context.safe_click(ox + team_btn_x + random.randint(-5, 5), oy + team_btn_y + random.randint(-5, 5))
         time.sleep(1)
 
         # 前3次: (740,240) -> (599,299) -> (511,400)
@@ -703,6 +709,34 @@ class GameLauncherApp:
 
 
 if __name__ == "__main__":
+    # 将控制台窗口移到屏幕右下角
+    try:
+        import ctypes
+        SWP_NOACTIVATE = 0x0010
+        SWP_NOZORDER = 0x0004
+        SWP_SHOWWINDOW = 0x0040
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        # 获取控制台窗口句柄
+        HWND = kernel32.GetConsoleWindow()
+        if HWND:
+            user32.SetWindowPos(HWND, 0,
+                0, 0,   # x, y - 先移动到目标
+                0, 0,   # w, h - 忽略宽高
+                SWP_NOZORDER | SWP_NOSIZE)
+            # 获取屏幕尺寸
+            SW = user32.GetSystemMetrics(0)   # SM_CXSCREEN
+            SH = user32.GetSystemMetrics(1)   # SM_CYSCREEN
+            # 窗口移到右下角（控制台窗口通常 80x30 字符，约 640x450）
+            console_w, console_h = 640, 450
+            x = SW - console_w - 10
+            y = SH - console_h - 10
+            user32.SetWindowPos(HWND, 0, x, y, 0, 0,
+                SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW)
+    except Exception:
+        pass
+
     root = tk.Tk()
     app = GameLauncherApp(root)
     root.bind('<F12>', lambda e: app.stop_all_tasks())
