@@ -129,22 +129,6 @@ def _dati_keju(stop_event):
                     done_windows.add(i)
                 time.sleep(0.3)
 
-        # 找求助2并点击（偏移 dy=-200）— 求助算1次
-        if len(done_windows) == len(REGIONS):
-            break
-        shot = _screenshot_gray(full=True)
-        for i, rect in enumerate(REGIONS):
-            if i in done_windows:
-                continue
-            r = _match_in_region(shot, TPL['qiuzhu2'], rect)
-            if r:
-                safe_click(r[0], r[1] - 200)
-                help_count[i] += 1
-                log(f"窗口{i+1} 求助{help_count[i]}/10 [qiuzhu2] 点击求助2")
-                if help_count[i] >= 10:
-                    done_windows.add(i)
-                time.sleep(0.3)
-
         # 找使用并点击 — 使用不算次数
         if len(done_windows) == len(REGIONS):
             break
@@ -165,10 +149,10 @@ def _dati_keju(stop_event):
     log("科举答题所有窗口求助满10次，统一点X")
     shot = _screenshot_gray(full=True)
     for i, rect in enumerate(REGIONS):
-        r = _match_in_region(shot, TPL['dati_x'], rect)
+        r = _match_in_region(shot, TPL['keju_x'], rect)
         if r:
             safe_click(r[0], r[1])
-            log(f"窗口{i+1} [dati_x] 点击关闭 ({r[0]},{r[1]})")
+            log(f"窗口{i+1} [keju_x] 点击关闭 ({r[0]},{r[1]})")
             time.sleep(0.3)
 
     log("科举答题完成")
@@ -327,16 +311,6 @@ def _dati_sanjie(stop_event):
         if len(done_windows) == len(REGIONS):
             log("三界答题全部完成")
             break
-
-        # 找求助1并点击（偏移 dy=-200）
-        for i, rect in enumerate(REGIONS):
-            if i in done_windows:
-                continue
-            r = _match_in_region(shot, TPL['qiuzhu'], rect)
-            if r:
-                safe_click(r[0], r[1] - 200)
-                log(f"窗口{i+1} [qiuzhu] 点击求助1")
-                time.sleep(0.3)
 
         # 找求助2并点击（偏移 dy=-200）
         shot = _screenshot_gray(full=True)

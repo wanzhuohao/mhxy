@@ -79,18 +79,6 @@ def yabiao_start(stop_event):
         shot = _screenshot_gray(full=True)
         found_any = False
 
-        # 检测天梯弹窗，点击x关闭
-        for i, rect in enumerate(REGIONS):
-            r = _match_in_region(shot, TPL['tianti'], rect)
-            if r:
-                # 找x按钮并点击
-                r_x = _match_in_region(shot, TPL['x'], rect)
-                if r_x:
-                    safe_click(r_x[0], r_x[1])
-                    log(f"窗口{i+1} 关闭天梯弹窗")
-                    found_any = True
-                    time.sleep(0.3)
-
         # 找运送镖银并点击
         for i, rect in enumerate(REGIONS):
             r = _match_in_region(shot, TPL['yasongbiaoyin'], rect)
