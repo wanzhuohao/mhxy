@@ -136,13 +136,18 @@ def _match_in_region(shot_full, template, region, yuzhi=0.8):
 
 
 def _retry_click_activity(missing_indices, stop_event):
-    """对未找到按钮的窗口点击 (132,188) 重试，返回新截图"""
+    """对未找到按钮的窗口重试：如果屏幕上有活动按钮就先点活动，否则点(132,188)"""
     if not missing_indices:
         return None
     for i in missing_indices:
         x0, y0 = REGIONS[i][0], REGIONS[i][1]
-        safe_click(x0 + 132, y0 + 188)
-        log(f"窗口{i+1} 点击重试 ({x0+132},{y0+188})")
+        # 如果屏幕上有活动按钮，先点击活动
+        if find_pic(TPL['huodong'], region=REGIONS[i]):
+            find_and_click(TPL['huodong'], region=REGIONS[i])
+            log(f"窗口{i+1} 重试前再次点击活动")
+        else:
+            safe_click(x0 + 132, y0 + 188)
+            log(f"窗口{i+1} 点击重试 ({x0+132},{y0+188})")
         time.sleep(0.3)
     if _wait(3, stop_event):
         return None

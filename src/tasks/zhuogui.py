@@ -31,7 +31,14 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
 
         # 第2步：点捉鬼右边的按钮（未找到则点击重试）
         if not _retry(lambda: find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10)):
-            safe_click(132, 188)
+            # 如果屏幕上有活动按钮，先点击活动再重试
+            if find_pic(TPL['huodong'], region=w1_rect):
+                find_and_click(TPL['huodong'], region=w1_rect)
+                log("重试前再次点击活动")
+                if _wait(2, stop_event):
+                    return
+            else:
+                safe_click(132, 188)
             if _wait(3, stop_event):
                 return
             if not _retry(lambda: find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10)):
