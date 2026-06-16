@@ -27,7 +27,14 @@ def fuben_start(stop_event: threading.Event):
 
         # 第2步：点普通右边的按钮（未找到则点击重试）
         if not _retry(lambda: find_and_click(TPL['putong'], dx=100, dy=10, region=rect)):
-            safe_click(132, 188)
+            # 如果屏幕上有活动按钮，先点击活动再重试
+            if find_pic(TPL['huodong'], region=rect):
+                find_and_click(TPL['huodong'], region=rect)
+                log("[huodong] 重试前再次点击活动")
+                if _wait(2, stop_event):
+                    return
+            else:
+                safe_click(132, 188)
             if _wait(3, stop_event):
                 return
             if not _retry(lambda: find_and_click(TPL['putong'], dx=100, dy=10, region=rect)):
