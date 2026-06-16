@@ -86,12 +86,18 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
             log(f"第{count}轮捉鬼完成！")
             send_feishu_msg(f"完成第{count}轮捉鬼")
 
-            # 检测到完成图后，点击领取任务（第1轮不点，因为第1轮没检测到图片）
-            if count > 1 or not entered_from_activity:
-                safe_click(ox + 511, oy + 392)
-                log(f"点击领取任务 ({ox+511},{oy+392})")
+            # 最后一轮：点退出(350,392)，不点领取任务
+            if count >= rounds:
+                log(f"捉鬼{rounds}轮已完成，退出")
+                safe_click(ox + 350, oy + 392)
+                send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
+                stop_event.set()
+                break
 
-            # 等10秒 → 点确定 → 点2次按钮
+            # 中间轮次：点领取任务(511,392) → 等10秒 → 点确定 → 点按钮
+            safe_click(ox + 511, oy + 392)
+            log(f"点击领取任务 ({ox+511},{oy+392})")
+
             if stop_event.wait(10):
                 break
 
@@ -106,14 +112,7 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
             if stop_event.wait(1):
                 break
 
-                if count >= rounds:
-                    log(f"捉鬼{rounds}轮已完成，退出")
-                    safe_click(ox + 350, oy + 392)
-                    send_feishu_msg(f"✅ 捉鬼任务完成，共{count}轮")
-                    stop_event.set()
-                    break
-
-                continue
+            continue
     except Exception as e:
         log(f"捉鬼任务异常: {e}", "ERR")
         send_feishu_msg(f"❌ 捉鬼任务异常: {e}")

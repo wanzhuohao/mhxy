@@ -87,19 +87,26 @@ def fuben_start(stop_event: threading.Event):
                 log("[yiwancheng] 点击已完成，副本结束")
                 break
 
-            # 检测请选择（独立检测，不依赖跳过按钮）
-            if find_and_click(TPL['qingxuanze'], yuzhi=0.8, region=rect, dx=50, dy=20):
-                log("[qingxuanze] 副本：点击请选取")
-                _wait(2, stop_event)
-                continue
-
+            # 检测跳过按钮（副本战斗场景标志）
             if _retry(lambda: find_and_click_path('fubentiaoguo.bmp', yuzhi=0.65, region=rect)):
-                # 跳过按钮匹配到后，轮询战按钮
+                # 跳过按钮匹配到后，先轮询战按钮（多次重试）
+                zhan_rect = (ox + 758, oy + 190, ox + 870, oy + 252)
                 for _ in range(10):
                     if stop_event.is_set():
                         return
-                    if find_and_click(TPL['zhan'], yuzhi=0.8, region=rect, dx=-20, dy=-5):
+                    if find_and_click(TPL['zhan'], yuzhi=0.8, region=zhan_rect, dx=-20, dy=-5):
                         log("[zhan] 副本：点击战")
+                        _wait(2, stop_event)
+                        break
+                    if _wait(1, stop_event):
+                        return
+
+                # 点击战之后，轮询检测请选择（多次重试）
+                for _ in range(10):
+                    if stop_event.is_set():
+                        return
+                    if find_and_click(TPL['qingxuanze'], yuzhi=0.8, region=rect, dx=50, dy=20):
+                        log("[qingxuanze] 副本：点击请选取")
                         _wait(2, stop_event)
                         break
                     if _wait(1, stop_event):
