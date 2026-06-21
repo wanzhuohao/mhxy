@@ -83,6 +83,8 @@ class GameLauncherApp:
 
         self._build_ui()
         self._check_launcher()
+        self._update_task_buttons_visibility()
+        self._start_button_update_timer()
 
     def _load_geometry(self):
         """从配置文件读取上次的窗口位置和大小"""
@@ -435,7 +437,7 @@ class GameLauncherApp:
         self.task_running[name] = False
         self.task_windows.pop(name, None)
         self.task_stop_events.pop(name, None)
-        self.root.after(0, lambda: self._set_btn_idle(name))
+        self.root.after(0, lambda: self._set_btn_done(name))
         log(f"{name}完成")
 
     def _run_single_task(self, hwnd, rect, func, stop_event, rounds=None):
@@ -450,6 +452,7 @@ class GameLauncherApp:
                 func(stop_event)
         except Exception as e:
             log(f"窗口执行出错: {e}", "ERR")
+            stop_event.set()
 
     def _set_btn_running(self, name):
         btn = self.task_buttons[name]
@@ -556,6 +559,11 @@ class GameLauncherApp:
 
     def all_in_one(self):
         """一条龙：组队→副本x2→捉鬼→师门→宝图→秘境→挖图→押镖→答题→领取奖励"""
+        # 防止重复启动
+        if 'all_in_one' in self.task_stop_events:
+            log("一条龙已在运行，请勿重复点击")
+            return
+
         windows = self._get_game_windows()
         if not windows:
             log("未找到游戏窗口", "WARN")
@@ -584,6 +592,8 @@ class GameLauncherApp:
         ('watu',      '挖图',     None, 'func'),
         ('yabiao',    '押镖',     None, 'func'),
         ('sanjie',    '三界',     None, 'func'),
+        ('keju',      '科举',     None, 'func'),
+        ('lingjiang', '领奖',     None, 'func'),
     ]
 
     def _all_in_one_thread(self, windows, stop_event, start_from=None):
@@ -629,53 +639,60 @@ class GameLauncherApp:
 
         log("一条龙任务完成")
         notify.send_feishu_msg("✅ 一条龙任务完成")
-        # 恢复所有按钮原色
+        # 重置副本进入按钮计数
+        from tasks.fuben import _jinru_index as fuben_jinru_idx
+        import tasks.fuben as fuben_mod
+        fuben_mod._jinru_index = 0
+        # 整个一条龙完成后才恢复所有按钮原色
         self.root.after(0, self._reset_all_task_btns)
         self.task_stop_events.pop('all_in_one', None)
         log("一条龙全部完成")
 
     def claim_rewards(self, windows, stop_event=None):
         """领取奖励"""
-        if stop_event and stop_event.is_set():
-            return
-        log("等待5秒后领取奖励...")
-        time.sleep(5)
-        if stop_event and stop_event.is_set():
-            return
-        log("── 领取奖励 ──")
-        import core
-        # 检查活动按钮是否存在
-        shot = core._screenshot_gray(full=True)
-        found_activity = False
-        for hwnd, rect in windows[:5]:
-            if core._match_in_region(shot, core.TPL['huodong'], rect):
-                found_activity = True
-                break
-        if not found_activity:
-            log("领取奖励：未找到活动按钮，跳过")
-            return
+        try:
+            if stop_event and stop_event.is_set():
+                return
+            log("等待5秒后领取奖励...")
+            time.sleep(5)
+            if stop_event and stop_event.is_set():
+                return
+            log("── 领取奖励 ──")
+            import core
+            # 检查活动按钮是否存在
+            shot = core._screenshot_gray(full=True)
+            found_activity = False
+            for hwnd, rect in windows[:5]:
+                if core._match_in_region(shot, core.TPL['huodong'], rect):
+                    found_activity = True
+                    break
+            if not found_activity:
+                log("领取奖励：未找到活动按钮，跳过")
+                return
 
-        # 找活动按钮并点击
-        for hwnd, rect in windows[:5]:
-            r = core._match_in_region(shot, core.TPL['huodong'], rect)
-            if r:
-                context.safe_click(r[0], r[1])
-                log(f"窗口{windows.index((hwnd,rect))+1} 点击活动")
-                time.sleep(0.3)
-        time.sleep(3)
+            # 找活动按钮并点击
+            for hwnd, rect in windows[:5]:
+                r = core._match_in_region(shot, core.TPL['huodong'], rect)
+                if r:
+                    context.safe_click(r[0], r[1])
+                    log(f"窗口{windows.index((hwnd,rect))+1} 点击活动")
+                    time.sleep(0.3)
+            time.sleep(3)
 
-        # 每个窗口5个奖励按钮，按轮次点击（先5个窗口的按钮1，再按钮2...）
-        reward_xs = [299, 405, 526, 640, 745]
-        reward_y = 500
-        for rx in reward_xs:
-            for i, (hwnd, rect) in enumerate(windows[:5]):
-                ox, oy = rect[0], rect[1]
-                x = ox + rx + random.randint(-3, 3)
-                y = oy + reward_y + random.randint(-3, 3)
-                context.safe_click(x, y)
-                log(f"窗口{i+1} 领取奖励 ({x},{y})")
-                time.sleep(0.3)
-            time.sleep(0.5)
+            # 每个窗口5个奖励按钮，按轮次点击（先5个窗口的按钮1，再按钮2...）
+            reward_xs = [299, 405, 526, 640, 745]
+            reward_y = 500
+            for rx in reward_xs:
+                for i, (hwnd, rect) in enumerate(windows[:5]):
+                    ox, oy = rect[0], rect[1]
+                    x = ox + rx + random.randint(-3, 3)
+                    y = oy + reward_y + random.randint(-3, 3)
+                    context.safe_click(x, y)
+                    log(f"窗口{i+1} 领取奖励 ({x},{y})")
+                    time.sleep(0.3)
+                time.sleep(0.5)
+        except Exception as e:
+            log(f"领取奖励出错: {e}", "ERR")
 
     def stop_all_tasks(self):
         """停止所有任务"""
@@ -690,6 +707,14 @@ class GameLauncherApp:
         self.task_windows.clear()
         self.task_stop_events.clear()
         log(f"停止完成，已停止{stopped}个任务")
+
+    def _update_task_buttons_visibility(self):
+        """根据当前时间更新按钮的显示/隐藏（暂无需要隐藏的按钮）"""
+        pass
+
+    def _start_button_update_timer(self):
+        """启动定时器，每分钟更新一次按钮显示状态"""
+        self.root.after(60000, self._start_button_update_timer)
 
     def close_all_games(self):
         """关闭所有游戏窗口"""
