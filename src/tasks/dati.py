@@ -13,6 +13,9 @@ def dati_start(stop_event):
     now = datetime.datetime.now()
     hour = now.hour
     weekday = now.weekday()  # 0=周一, 6=周日
+    weekday_names = ['周一','周二','周三','周四','周五','周六','周日']
+
+    log(f"答题时间判断: {now.strftime('%H:%M')} {weekday_names[weekday]} weekday={weekday} hour={hour}")
 
     # 周一到周五 且 大于17点 → 科举
     if weekday < 5 and hour >= 17:
@@ -124,8 +127,8 @@ def _dati_keju(stop_event):
             if r:
                 safe_click(r[0], r[1] - 200)
                 help_count[i] += 1
-                log(f"窗口{i+1} 求助{help_count[i]}/10 [qiuzhu] 点击求助1")
-                if help_count[i] >= 10:
+                log(f"窗口{i+1} 求助{help_count[i]}/12 [qiuzhu] 点击求助1")
+                if help_count[i] >= 12:
                     done_windows.add(i)
                 time.sleep(0.3)
 

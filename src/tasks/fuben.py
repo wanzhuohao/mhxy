@@ -17,7 +17,7 @@ def fuben_start(stop_event: threading.Event):
     rect = (0, 0, 870, 692)
 
     # 第0步：先检查跳过按钮是否已经在屏幕上（副本已进入）
-    if find_pic(TPL['fubentiaoguo'], yuzhi=0.65, region=rect):
+    if find_pic(TPL['fubentiaoguo'], yuzhi=0.6, region=rect):
         log("副本已进入，直接进入主循环")
     # 第1步：点活动（没找到则跳过，直接进主循环）
     elif find_and_click(TPL['huodong'], region=rect):
@@ -87,6 +87,7 @@ def fuben_start(stop_event: threading.Event):
         log("未找到活动按钮，跳过准备步骤，直接进副本主循环")
 
     ox, oy = rect[0], rect[1]
+    zhan_rect = (ox + 758, oy + 190, ox + 870, oy + 252)
     try:
         while not stop_event.is_set():
             # 检测已完成，直接点击
@@ -94,10 +95,9 @@ def fuben_start(stop_event: threading.Event):
                 log("[yiwancheng] 点击已完成，副本结束")
                 break
 
-            # 检测跳过按钮（副本战斗场景标志）
-            if _retry(lambda: find_and_click_path('fubentiaoguo.bmp', yuzhi=0.65, region=rect)):
-                # 跳过按钮匹配到后，先轮询战按钮（多次重试）
-                zhan_rect = (ox + 758, oy + 190, ox + 870, oy + 252)
+            # 持续检测跳过按钮
+            if _retry(lambda: find_and_click_path('fubentiaoguo.bmp', yuzhi=0.6, region=rect)):
+                # 跳过按钮匹配到后，轮询战按钮（多次重试）
                 for _ in range(10):
                     if stop_event.is_set():
                         return
@@ -108,17 +108,18 @@ def fuben_start(stop_event: threading.Event):
                     if _wait(1, stop_event):
                         return
 
-                # 点击战之后，轮询检测请选择（多次重试）
-                for _ in range(10):
-                    if stop_event.is_set():
-                        return
-                    if find_and_click(TPL['qingxuanze'], yuzhi=0.8, region=rect, dx=50, dy=20):
-                        log("[qingxuanze] 副本：点击请选取")
-                        _wait(2, stop_event)
-                        break
-                    if _wait(1, stop_event):
-                        return
+            # 持续检测请选择（不依赖跳过按钮）
+            if find_and_click(TPL['qingxuanze'], yuzhi=0.7, region=rect, dx=50, dy=20):
+                log("[qingxuanze] 副本：点击请选取")
+                _wait(2, stop_event)
                 continue
+
+            # 持续检测战按钮（不依赖跳过按钮）
+            if find_and_click(TPL['zhan'], yuzhi=0.8, region=zhan_rect, dx=-20, dy=-5):
+                log("[zhan] 副本：点击战")
+                _wait(2, stop_event)
+                continue
+
             if _wait(1, stop_event):
                 break
         log("副本任务完成")
