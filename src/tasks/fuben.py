@@ -88,6 +88,7 @@ def fuben_start(stop_event: threading.Event):
 
     ox, oy = rect[0], rect[1]
     zhan_rect = (ox + 758, oy + 190, ox + 870, oy + 252)
+    qingxuanze_rect = (ox + 585, oy + 410, ox + 810, oy + 620)
     try:
         while not stop_event.is_set():
             # 检测已完成，直接点击
@@ -108,8 +109,8 @@ def fuben_start(stop_event: threading.Event):
                     if _wait(1, stop_event):
                         return
 
-            # 持续检测请选择（不依赖跳过按钮）
-            if find_and_click(TPL['qingxuanze'], yuzhi=0.7, region=rect, dx=50, dy=20):
+            # 持续检测请选择（限定区域）
+            if find_and_click(TPL['qingxuanze'], yuzhi=0.7, region=qingxuanze_rect, dx=50, dy=20):
                 log("[qingxuanze] 副本：点击请选取")
                 _wait(2, stop_event)
                 continue
