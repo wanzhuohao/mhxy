@@ -109,6 +109,16 @@ def watu_start(stop_event):
                 found_any = True
                 time.sleep(0.3)
 
+        # 检测整理弹窗，有则点击X关闭(771,138)加窗口偏移
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['zhengli'], rect, yuzhi=0.8)
+            if r:
+                ox, oy = rect[0], rect[1]
+                safe_click(ox + 771, oy + 138)
+                log(f"窗口{i+1} [zhengli] 检测到整理弹窗，点击X ({ox+771},{oy+138})")
+                found_any = True
+                time.sleep(0.3)
+
         # 找使用按钮并点击（共用同一张截图）
         for i, rect in enumerate(REGIONS):
             r = _match_in_region(shot, TPL['shiyong'], rect, yuzhi=0.65)

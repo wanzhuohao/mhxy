@@ -26,15 +26,15 @@ def jiesan_start(stop_event: threading.Event):
         safe_click(ox + team_btn_x + random.randint(-5, 5), oy + team_btn_y + random.randint(-5, 5))
     time.sleep(1)
 
-    # 前3次: (740,240) -> (599,299) -> (511,400)
-    for i in range(3):
+    # 前4次: (740,240) -> (599,299) -> (511,400)
+    for i in range(4):
         for x, y in [(740, 240), (599, 299), (511, 400)]:
             if stop_event.is_set():
                 return
             rx, ry = random.randint(-5, 5), random.randint(-5, 5)
             safe_click(ox + x + rx, oy + y + ry)
             time.sleep(0.5)
-    # 第4次: (740,190) -> (599,248) -> (511,400)
+    # 第5次: (740,190) -> (599,248) -> (511,400)
     for x, y in [(740, 190), (599, 248), (511, 400)]:
         if stop_event.is_set():
             return

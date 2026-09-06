@@ -109,7 +109,7 @@ def _screenshot_gray(region=None, full=False):
             monitor = _sct.monitors[0]
     else:
         monitor = {"left": region[0], "top": region[1],
-                   "width": region[2], "height": region[3]}
+                   "width": region[2] - region[0], "height": region[3] - region[1]}
     with _sct_lock:
         shot = _sct.grab(monitor)
     arr = np.array(shot)[:, :, :3]
