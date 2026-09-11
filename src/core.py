@@ -87,6 +87,12 @@ TPL = {
     'zhuoguiqueding': _load('zhuogui/zhuoguiqueding.bmp'),
     'zhuogui_wancheng': _load('zhuogui/wancheng.bmp'),
     'panel_x':        _load('common/panel_x.bmp'),
+    'xuanze_shi':      _load('fuben/xuanze_shi.bmp'),
+    'tongguan':        _load('mijing/tongguan.bmp'),
+    'tianti':          _load('yabiao/tianti.bmp'),
+    'x':               _load('yabiao/x.bmp'),
+    'zhuogui_xuanxiang': _load('zhuogui/zhuogui_xuanxiang.bmp'),
+    'zhuogui_jixu':    _load('zhuogui/jixu.bmp'),
 }
 
 # 宝图搜索区域
