@@ -86,6 +86,7 @@ TPL = {
     'zhuogui':        _load('zhuogui/zhuogui.bmp'),
     'zhuoguiqueding': _load('zhuogui/zhuoguiqueding.bmp'),
     'zhuogui_wancheng': _load('zhuogui/wancheng.bmp'),
+    'panel_x':        _load('common/panel_x.bmp'),
 }
 
 # 宝图搜索区域
@@ -326,3 +327,19 @@ def get_game_windows():
     win32gui.EnumWindows(callback, None)
     windows.sort(key=lambda w: (w[1][1], w[1][0]))
     return windows
+
+def close_popups(yuzhi=0.72):
+    """扫描5个窗口，关闭带红X的随机弹窗（加入帮派等）。返回关闭数量"""
+    closed = 0
+    try:
+        shot = _screenshot_gray(full=True)
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['panel_x'], rect, yuzhi=yuzhi)
+            if r:
+                safe_click(r[0], r[1])
+                log(f"窗口{i+1} 关闭随机弹窗 ({r[0]},{r[1]})")
+                closed += 1
+                time.sleep(0.3)
+    except Exception as e:
+        log(f"关闭弹窗异常: {e}", "WARN")
+    return closed

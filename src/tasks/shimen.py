@@ -103,8 +103,7 @@ def shimen_start(stop_event: threading.Event):
         log(f"窗口{i+1} [huodongshimen] 点击师门右边 ({cx+130},{cy+10})")
         time.sleep(0.3)
 
-    # 等待界面刷新，确保去完成按钮加载出来
-    if _wait(3, stop_event):
+    if _wait(2, stop_event):
         return
 
     # 第3步：每个窗口找去完成 → 等待完成
@@ -122,7 +121,8 @@ def shimen_start(stop_event: threading.Event):
         found_qu = []
         missing = []  # 重置 missing 列表
         for i, rect in enumerate(REGIONS):
-            r = _match_in_region(shot, TPL['quwancheng'], rect, yuzhi=0.8)
+            # 实测有"去完成"时匹配分约 0.91~0.95，无时仅约 0.52，阈值取 0.88 区分
+            r = _match_in_region(shot, TPL['quwancheng'], rect, yuzhi=0.88)
             if r:
                 found_qu.append((i, r))
             else:

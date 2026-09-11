@@ -97,47 +97,12 @@ def mijing_start(stop_event):
 
         # 第4步：全屏截图，点继续
         shot = _screenshot_gray(full=True)
-        jixu_found = False
         for i, rect in enumerate(REGIONS):
             r = _match_in_region(shot, TPL['jixu'], rect)
             if r:
                 safe_click(r[0], r[1])
                 log(f"窗口{i+1} [jixu] 点击继续 ({r[0]},{r[1]})")
-                jixu_found = True
             time.sleep(0.3)
-
-        # 如果没找到继续，尝试找选择秘境
-        if not jixu_found:
-            log("未找到继续按钮，尝试找选择秘境...")
-            for i, rect in enumerate(REGIONS):
-                r = _match_in_region(shot, TPL['xuanmijing'], rect)
-                if r:
-                    # 点击左边的秘境入口
-                    safe_click(r[0] - 50, r[1])
-                    log(f"窗口{i+1} [xuanmijing] 点击左边 ({r[0]-50},{r[1]})")
-                    time.sleep(0.5)
-                    # 截图找进入按钮
-                    shot2 = _screenshot_gray(full=True)
-                    r2 = _match_in_region(shot2, TPL['mijing_jinru'], rect)
-                    if r2:
-                        safe_click(r2[0], r2[1])
-                        log(f"窗口{i+1} [mijing_jinru] 点击进入 ({r2[0]},{r2[1]})")
-                        time.sleep(0.3)
-                        # 点击进入后找确定按钮
-                        shot3 = _screenshot_gray(full=True)
-                        r3 = _match_in_region(shot3, TPL['queding'], rect)
-                        if r3:
-                            safe_click(r3[0], r3[1])
-                            log(f"窗口{i+1} [queding] 点击确定 ({r3[0]},{r3[1]})")
-                            time.sleep(0.3)
-                        # 等待后再回到检测继续
-                        if _wait(3, stop_event):
-                            return
-                        shot4 = _screenshot_gray(full=True)
-                        r4 = _match_in_region(shot4, TPL['jixu'], rect)
-                        if r4:
-                            safe_click(r4[0], r4[1])
-                            log(f"窗口{i+1} [jixu] 点击继续 ({r4[0]},{r4[1]})")
 
         if _wait(2, stop_event):
             return
@@ -150,7 +115,7 @@ def mijing_start(stop_event):
     while not stop_event.is_set():
         shot = _screenshot_gray(full=True)
 
-        # 检测失败标志，已完成的跳过
+        # 检测失败/通关标志，已完成的跳过
         for i, rect in enumerate(REGIONS):
             if i in done_windows:
                 continue
@@ -158,9 +123,14 @@ def mijing_start(stop_event):
             if r:
                 log(f"窗口{i+1} [shibai] 秘境已完成")
                 done_windows.add(i)
+                continue
+            r = _match_in_region(shot, TPL['tongguan'], rect)
+            if r:
+                log(f"窗口{i+1} [tongguan] 秘境通关")
+                done_windows.add(i)
 
         if len(done_windows) == len(REGIONS):
-            log("秘境任务全部完成，点击所有失败标志")
+            log("秘境任务全部完成，点击所有完成标志")
             for i, rect in enumerate(REGIONS):
                 r = _match_in_region(shot, TPL['shibai'], rect)
                 if r:
@@ -185,7 +155,7 @@ def mijing_start(stop_event):
         for i, rect in enumerate(REGIONS):
             if i in done_windows:
                 continue
-            r = _match_in_region(shot, TPL['jinruzhandou'], rect, yuzhi=0.75)
+            r = _match_in_region(shot, TPL['jinruzhandou'], rect, yuzhi=0.7)
             if r:
                 safe_click(r[0], r[1])
                 log(f"窗口{i+1} [jinruzhandou] 点击进入战斗 ({r[0]},{r[1]})")

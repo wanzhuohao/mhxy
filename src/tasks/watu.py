@@ -95,31 +95,6 @@ def watu_start(stop_event):
     while not stop_event.is_set():
         shot = _screenshot_gray(full=True)
         found_any = False
-
-        # 检测激活弹窗，有则点击固定坐标(641,201)加窗口偏移和随机偏移
-        for i, rect in enumerate(REGIONS):
-            r = _match_in_region(shot, TPL['jihuo'], rect, yuzhi=0.8)
-            if r:
-                import random
-                ox, oy = rect[0], rect[1]
-                rx = random.randint(-3, 3)
-                ry = random.randint(-3, 3)
-                safe_click(ox + 641 + rx, oy + 201 + ry)
-                log(f"窗口{i+1} [jihuo] 点击激活 ({ox+641+rx},{oy+201+ry})")
-                found_any = True
-                time.sleep(0.3)
-
-        # 检测整理弹窗，有则点击X关闭(771,138)加窗口偏移
-        for i, rect in enumerate(REGIONS):
-            r = _match_in_region(shot, TPL['zhengli'], rect, yuzhi=0.8)
-            if r:
-                ox, oy = rect[0], rect[1]
-                safe_click(ox + 771, oy + 138)
-                log(f"窗口{i+1} [zhengli] 检测到整理弹窗，点击X ({ox+771},{oy+138})")
-                found_any = True
-                time.sleep(0.3)
-
-        # 找使用按钮并点击（共用同一张截图）
         for i, rect in enumerate(REGIONS):
             r = _match_in_region(shot, TPL['shiyong'], rect, yuzhi=0.65)
             if r:

@@ -144,14 +144,14 @@ def baotu_start(stop_event):
             if i in done_windows:
                 continue  # 已完成，跳过
 
-            has_renwu = _match_in_region(shot, TPL['renwu'], rect, yuzhi=0.65) is not None
-            has_baotu = _match_in_region(shot, TPL['renwu_baotu'], rect, yuzhi=0.75) is not None
+            has_renwu = _match_in_region(shot, TPL['renwu'], rect, yuzhi=0.8) is not None
+            has_baotu = _match_in_region(shot, TPL['renwu_baotu'], rect, yuzhi=0.8) is not None
 
             if has_renwu and not has_baotu:
                 log(f"窗口{i+1} 宝图完成")
                 done_windows.add(i)
             elif has_baotu:
-                r = _match_in_region(shot, TPL['renwu_baotu'], rect, yuzhi=0.75)
+                r = _match_in_region(shot, TPL['renwu_baotu'], rect, yuzhi=0.8)
                 if r:
                     safe_click(r[0] + 50, r[1] + 10)
                     log(f"窗口{i+1} [renwu_baotu] 点击宝图追踪")

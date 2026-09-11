@@ -75,9 +75,26 @@ def yabiao_start(stop_event):
         log("所有窗口都未找到活动按钮，直接进入押镖循环")
 
     # 第3步：循环找运送镖银 → 确定
+    tianti_count = 0  # 剑会群雄弹窗关闭累计，超限停止防死循环误点
     while not stop_event.is_set():
         shot = _screenshot_gray(full=True)
         found_any = False
+
+        # 检测剑会群雄弹窗，在标题附近(右上区域)找x关闭，避开左下聊天框误匹配
+        # 累计超过6次仍检测到则跳过(关不掉，避免死循环误开聊天)
+        if tianti_count < 6:
+            for i, rect in enumerate(REGIONS):
+                r = _match_in_region(shot, TPL['tianti'], rect)
+                if r:
+                    xr = (max(rect[0], r[0] - 60), max(rect[1], r[1] - 120),
+                          min(rect[2], r[0] + 300), min(rect[3], r[1] + 80))
+                    r_x = _match_in_region(shot, TPL['x'], xr)
+                    if r_x:
+                        safe_click(r_x[0], r_x[1])
+                        log(f"窗口{i+1} 关闭剑会群雄弹窗 ({r_x[0]},{r_x[1]})")
+                        found_any = True
+                        tianti_count += 1
+                        time.sleep(0.3)
 
         # 找运送镖银并点击
         for i, rect in enumerate(REGIONS):

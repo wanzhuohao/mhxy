@@ -3,6 +3,16 @@
 ## 待办
 
 - 秘境：周一需要截图加选择秘境的按钮
+- mhxy_code 参考稿还有 context.py（全局鼠标锁+停止闸刀）/core.py（mss容错+UTF-8 stdout）/stuck.py（看门狗）/mhxy.py（账号管理+框图助手）等大改未合并，等决定是否改为"5窗口单人挂机"模式
+
+## 2026-09-11 合并 mhxy_code 参考稿的 7 个零风险任务模块
+
+- 覆盖 7 个任务模块：baotu/shimen/fuben/mijing/watu/yabiao/zhuogui（均为稳定性改进+bug修复，不动 mhxy.py 和组队流）
+- core.py 最小改动：加 panel_x 模板注册 + close_popups 函数（zhuogui.py 依赖）
+- 同步模板：7 个任务目录共 46 个 bmp（含新增 tongguan/zhuogui_xuanxiang/jixu 等）
+- 保留我方：mhxy.py/context.py/core.py主体/stuck.py（未合并）/tasks/__init__.py/dati.py/jiesan/zudui/sanjie/keju/lingjiang
+- 验证：7 个 .py 语法 OK + core 导入 OK + 7 个任务模块全部导入 OK
+- 未合并原因：附件把 mhxy 从"组队任务流"改成"5窗口单人挂机"模式（删除5个组队任务+新增6个单人任务+账号管理+框图助手），是业务方向二选一，暂不动
 
 ## 2026-06-10 科举逻辑简化 + 结束图优先处理
 
