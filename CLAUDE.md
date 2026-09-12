@@ -14,15 +14,16 @@
 
 ```
 mhxy/
-├── src/           # 源代码
-│   ├── mhxy.py    # 主程序 GUI
-│   ├── core.py    # 截图、模板匹配、重试
-│   ├── context.py # 窗口上下文、点击锁
-│   ├── notify.py  # 飞书通知
-│   ├── tasks/     # 任务模块
+├── src/            # 源代码
+│   ├── mhxy.py     # 主程序 GUI
+│   ├── core.py     # 截图、模板匹配、重试
+│   ├── context.py  # 窗口上下文、点击锁
+│   ├── notify.py   # 飞书通知
+│   ├── tasks/      # 任务模块
 │   └── config.json # 配置文件（不提交）
-├── templates/     # 模板图片
-├── tool/          # 可复用脚本
+├── templates/      # 模板图片
+├── progress.md     # 开发进度
+├── CLAUDE.md       # 项目说明
 └── window.json    # 窗口位置配置
 ```
 
