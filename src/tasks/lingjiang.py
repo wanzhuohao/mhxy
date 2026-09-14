@@ -1,7 +1,8 @@
 """领奖任务"""
 
 import random
-from core import log, get_game_windows, safe_click, _screenshot_gray, TPL, REGIONS, _match_in_region, _wait, time
+import time
+from core import log, get_game_windows, safe_click, _screenshot_gray, TPL, REGIONS, _match_in_region, _wait
 
 
 def lingjiang_start(stop_event):
