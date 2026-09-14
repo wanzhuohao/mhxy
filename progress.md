@@ -4,6 +4,17 @@
 
 - （暂无）
 
+## 2026-09-14 代码盘点 + 稳定性优化
+
+- 挖图双击改走窗口点击锁（新增 context.safe_double_click）
+- 科举求助固定 12 次即停，统一注释/日志表述
+- notify.py 读取 config.json 容错，损坏不再导致启动崩溃
+- 移除不生效的 INDEPENDENT_TASKS 与并行调度死代码
+- 统一 region 为 (left,top,right,bottom) 语义，修正 _screenshot_gray 尺寸计算
+- 任务模块函数内 import 上提至顶部
+- lingjiang 脆弱的"从 core 借 time"改为直接 import time
+- 新增维护文档 docs/2026-09-14-代码盘点与本次优化.md
+
 ## 2026-09-13 消融清理（删除失效与调试残留）
 
 - 删除已失效的 CLI 入口：mhxy-cli.py / mhxy-cli.bat（对应的 src/cli/ 源码此前已删除，只剩编译缓存）
