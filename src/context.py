@@ -41,3 +41,15 @@ def safe_click(x, y):
             pyautogui.click(x, y)
     else:
         pyautogui.click(x, y)
+
+
+def safe_double_click(x, y):
+    """带锁双击，同窗口串行，不同窗口并行（供需要双击的地方使用）"""
+    import pyautogui
+    hwnd = get_window_hwnd()
+    if hwnd:
+        lock = get_window_lock(hwnd)
+        with lock:
+            pyautogui.doubleClick(x, y)
+    else:
+        pyautogui.doubleClick(x, y)

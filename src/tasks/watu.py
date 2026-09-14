@@ -2,7 +2,7 @@
 
 import time
 from core import log, _screenshot_gray, TPL, _wait
-from context import safe_click
+from context import safe_click, safe_double_click
 from notify import send_feishu_msg
 from core import _match_in_region, REGIONS
 
@@ -81,8 +81,7 @@ def watu_start(stop_event):
         send_feishu_msg(f"⚠️ 挖图：{','.join(missing)} 未找到宝图")
 
     for i, (cx, cy, val) in found_baotu:
-        import pyautogui
-        pyautogui.doubleClick(cx, cy)
+        safe_double_click(cx, cy)
         log(f"窗口{i+1} 双击宝图 ({cx},{cy})")
         time.sleep(0.3)
 
