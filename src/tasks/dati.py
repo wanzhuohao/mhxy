@@ -111,8 +111,7 @@ def _dati_keju(stop_event):
     if _wait(2, stop_event):
         return
 
-    # 第3步：科举每题求助10次即算该窗口完成；为避免个别点击被游戏吞掉，
-    # 实际允许容错多跑2次（到12次），达到12次则本窗口停止。
+    # 第3步：科举每题求助固定点满12次即算该窗口完成。
     # 使用按钮不算次数。所有窗口都停后统一点X关闭。
     help_count = {i: 0 for i in range(len(REGIONS))}
     done_windows = set()
@@ -121,7 +120,7 @@ def _dati_keju(stop_event):
             break
         shot = _screenshot_gray(full=True)
 
-        # 找求助1并点击（偏移 dy=-200）— 求助算1次
+        # 找求助1并点击（偏移 dy=-200）— 求助算1次，固定满12次停止
         for i, rect in enumerate(REGIONS):
             if i in done_windows:
                 continue
@@ -129,7 +128,7 @@ def _dati_keju(stop_event):
             if r:
                 safe_click(r[0], r[1] - 200)
                 help_count[i] += 1
-                log(f"窗口{i+1} 求助{help_count[i]}次(目标10/容错至12) [qiuzhu] 点击求助1")
+                log(f"窗口{i+1} 求助{help_count[i]}/12 [qiuzhu] 点击求助1")
                 if help_count[i] >= 12:
                     done_windows.add(i)
                 time.sleep(0.3)
@@ -150,8 +149,8 @@ def _dati_keju(stop_event):
         if _wait(1, stop_event):
             break
 
-    # 各窗口求助到达"10次目标"后仍可能因为个别点击失败继续到12次，统一点X关闭
-    log("科举答题所有窗口求助完成（目标10次/容错至12次），统一点X")
+    # 各窗口求助固定满12次，统一点X关闭
+    log("科举答题所有窗口求助满12次，统一点X")
     shot = _screenshot_gray(full=True)
     for i, rect in enumerate(REGIONS):
         r = _match_in_region(shot, TPL['keju_x'], rect)

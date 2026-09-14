@@ -1,5 +1,6 @@
 """挖图任务（全屏截图，分5区域处理）"""
 
+import random
 import time
 from core import log, _screenshot_gray, TPL, _wait
 from context import safe_click, safe_double_click
@@ -99,7 +100,6 @@ def watu_start(stop_event):
         for i, rect in enumerate(REGIONS):
             r = _match_in_region(shot, TPL['jihuo'], rect, yuzhi=0.8)
             if r:
-                import random
                 ox, oy = rect[0], rect[1]
                 rx = random.randint(-3, 3)
                 ry = random.randint(-3, 3)

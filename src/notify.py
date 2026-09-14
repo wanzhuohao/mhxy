@@ -8,8 +8,12 @@ import time
 _CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.json')
 _CONFIG = {}
 if os.path.exists(_CONFIG_FILE):
-    with open(_CONFIG_FILE, 'r', encoding='utf-8') as f:
-        _CONFIG = json.load(f)
+    try:
+        with open(_CONFIG_FILE, 'r', encoding='utf-8') as f:
+            _CONFIG = json.load(f)
+    except (OSError, ValueError) as e:
+        # 配置损坏时不能阻断整个脚本，打警告后用空配置继续
+        print(f"[WARN] 读取飞书配置失败，使用空配置继续: {e}")
 
 FEISHU_CHAT_ID = _CONFIG.get('feishu_chat_id', '')
 LARK_CLI_PATH = _CONFIG.get('lark_cli_path', 'lark-cli')
