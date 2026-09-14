@@ -14,7 +14,8 @@ def set_window_context(hwnd, rect):
 
 
 def get_window_rect():
-    """获取当前线程的窗口区域 (x, y, w, h)"""
+    """获取当前线程的窗口区域，语义为 (left, top, right, bottom)
+    来源是 win32gui.GetWindowRect(hwnd)，与项目统一 region 边界坐标一致"""
     return getattr(_thread_ctx, 'rect', None)
 
 

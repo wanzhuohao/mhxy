@@ -1,8 +1,9 @@
 """捉鬼任务（组队型，只在队长窗口执行）"""
 
+import random
 import threading
 import time
-from core import log, get_game_windows, REGIONS, find_pic
+from core import log, TPL, REGIONS, find_pic, find_and_click, _retry, _wait
 from context import safe_click
 from notify import send_feishu_msg
 
@@ -11,7 +12,7 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
     """捉鬼：点击活动进入 → 点击去接受任务 → 等待完成 → 循环指定轮数
 
     完成图检测：逐秒检测 TPL['zhuogui_wancheng']，每10秒打印一次当前匹配度，
-    便于调整阈值。若图片匹配一直不准，可在 debug_match.py 中测试实际匹配度。
+    便于调整阈值。
     """
     log("捉鬼任务开始")
 
@@ -21,7 +22,6 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
     log(f"窗口1 rect={w1_rect}")
 
     # 第1步：点活动
-    from core import TPL, find_and_click, _retry, _wait, find_pic_debug
     entered_from_activity = False
     if find_and_click(TPL['huodong'], region=w1_rect):
         log("点击活动")
@@ -127,7 +127,6 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
 
 def _random_click(x, y, rand_x=5, rand_y=5):
     """带随机偏移的点击"""
-    import random
     cx = x + random.randint(-rand_x, rand_x)
     cy = y + random.randint(-rand_y, rand_y)
     safe_click(cx, cy)

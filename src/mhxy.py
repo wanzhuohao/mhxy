@@ -18,7 +18,7 @@ import core
 from core import log
 import context
 import notify
-from tasks import TASK_FUNCS, INDEPENDENT_TASKS, TEAM_TASKS
+from tasks import TASK_FUNCS, TEAM_TASKS
 
 
 # ========== 颜色主题（深色游戏风） ==========
@@ -400,7 +400,8 @@ class GameLauncherApp:
             log(f"启动{name}")
 
     def _dispatch_task(self, name, func, stop_event, rounds=None):
-        """根据任务类型调度：独立型每窗口一个线程，组队型只在窗口 1 执行"""
+        """根据任务类型调度。当前所有任务均为"组队型/全屏截图型"：
+        只执行一次，用窗口1的上下文"""
         all_windows = self._get_game_windows()
         if not all_windows:
             log("未找到游戏窗口", "WARN")
@@ -408,31 +409,11 @@ class GameLauncherApp:
             self.root.after(0, lambda: self._set_btn_idle(name))
             return
 
-        if name in TEAM_TASKS:
-            # 组队型/全屏截图型：只执行一次，用窗口1的上下文
-            hwnd, rect = all_windows[0]
-            self.task_windows[name] = {hwnd}
-            log(f"── 执行 {name} ──")
-            self._run_single_task(hwnd, rect, func, stop_event, rounds)
-        else:
-            # 独立型：全部窗口并行
-            windows = all_windows
-            log(f"── 全部窗口 ──")
-
-            self.task_windows[name] = set(hwnd for hwnd, _ in windows)
-
-            # 每个窗口一个线程
-            threads = []
-            for hwnd, rect in windows:
-                t = threading.Thread(
-                    target=self._run_single_task,
-                    args=(hwnd, rect, func, stop_event, rounds),
-                    daemon=True
-                )
-                threads.append(t)
-                t.start()
-            for t in threads:
-                t.join()
+        # 所有任务统一：在窗口1上全屏处理（任务内部已按 REGIONS 遍历5个窗口）
+        hwnd, rect = all_windows[0]
+        self.task_windows[name] = {hwnd}
+        log(f"── 执行 {name} ──")
+        self._run_single_task(hwnd, rect, func, stop_event, rounds)
 
         self.task_running[name] = False
         self.task_windows.pop(name, None)
