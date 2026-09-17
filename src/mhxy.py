@@ -123,11 +123,9 @@ class GameLauncherApp:
         self.task_stop_events = {}  # 每个任务的 stop_event
         self.task_windows = {}      # 跟踪每个任务运行在哪些窗口
         self.arrange_index = 0
-        self._selecting_start_step = False  # 中途继续选择模式
 
         self._build_ui()
         self._check_launcher()
-        self._update_task_buttons_visibility()
         self._start_button_update_timer()
 
     def _load_geometry(self):
@@ -137,8 +135,8 @@ class GameLauncherApp:
                 with open(self.CONFIG_FILE, 'r') as f:
                     cfg = json.load(f)
                 w, h = cfg.get('width', 380), cfg.get('height', 460)
-                # 高度下限：按钮加高后内容需要足够高度，防止旧配置截断底部按钮
-                h = max(h, 860)
+                # 高度下限：保证窗口能容纳当前按钮布局，防止旧配置截断底部按钮
+                h = max(h, 430)
                 x, y = cfg.get('x', 1700), cfg.get('y', 200)
                 return f"{w}x{h}+{x}+{y}"
         except Exception:
@@ -222,15 +220,6 @@ class GameLauncherApp:
         self._make_btn(half_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
             row=0, column=1, padx=1, sticky='ew')
         r += 1
-
-        # 任务按钮（橙色）
-        self.task_buttons = {}
-        for name, text, t_row, t_col in self.TASK_DEFS:
-            btn = self._make_btn(btn_frame, text, lambda n=name: self.toggle_task(n), C_TASK, C_TASK_HOVER)
-            btn.grid(row=r + t_row, column=t_col, padx=2, pady=5, sticky='ew')
-            self.task_buttons[name] = btn
-            self.task_running[name] = False
-        r += 6
 
         # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
         self.zhuogui_rounds_var = tk.IntVar(value=2)
@@ -433,34 +422,18 @@ class GameLauncherApp:
     # ========== 任务调度 ==========
 
     def toggle_task(self, name, rounds=None):
-        """启动/停止任务，rounds 可指定轮数"""
-        # 中途继续模式：点击黄色按钮从该任务开始一条龙
-        if self._selecting_start_step:
-            self._selecting_start_step = False
-            self._midway_btn.config(text="中途继续")
-            # 恢复黄色按钮原色
-            for n in self.task_buttons:
-                self._set_btn_idle(n)
-            self._start_all_in_one_from(name)
-            return
-
-        btn = self.task_buttons[name]
-        btn.config(state=tk.DISABLED)
-        self.root.after(300, lambda: btn.config(state=tk.NORMAL))
-
-        if self.task_running[name]:
+        """启动任务；若该任务在运行则停止（rounds 可指定轮数）"""
+        if self.task_running.get(name):
             # 停止
             stop_event = self.task_stop_events.get(name)
             if stop_event:
                 stop_event.set()
             self.task_running[name] = False
             self.task_windows.pop(name, None)
-            self._set_btn_idle(name)
             log(f"停止{name}")
         else:
             # 启动
             self.task_running[name] = True
-            self._set_btn_running(name)
             stop_event = threading.Event()
             self.task_stop_events[name] = stop_event
             func = TASK_FUNCS.get(name)
@@ -475,7 +448,6 @@ class GameLauncherApp:
         if not all_windows:
             log("未找到游戏窗口", "WARN")
             self.task_running[name] = False
-            self.root.after(0, lambda: self._set_btn_idle(name))
             return
 
         # 所有任务统一：在窗口1上全屏处理（任务内部已按 REGIONS 遍历5个窗口）
@@ -487,7 +459,6 @@ class GameLauncherApp:
         self.task_running[name] = False
         self.task_windows.pop(name, None)
         self.task_stop_events.pop(name, None)
-        self.root.after(0, lambda: self._set_btn_done(name))
         log(f"{name}完成")
 
     def _run_single_task(self, hwnd, rect, func, stop_event, rounds=None):
@@ -504,43 +475,6 @@ class GameLauncherApp:
             log(f"窗口执行出错: {e}", "ERR")
             stop_event.set()
 
-    def _set_btn_running(self, name):
-        btn = self.task_buttons[name]
-        text = self._get_display_name(name)
-        btn.config(text=f"■ {text}", fg=C_TEXT, activeforeground=C_TEXT)
-        btn.set_border(3)
-        btn.unbind('<Enter>')
-        btn.unbind('<Leave>')
-
-    def _set_btn_idle(self, name):
-        btn = self.task_buttons[name]
-        text = self._get_display_name(name)
-        btn.config(text=text, fg=C_TEXT, activeforeground=C_TEXT)
-        btn.set_border(1)
-
-    def _set_btn_current(self, name):
-        """一条龙当前执行按钮（粗黑边框）"""
-        btn = self.task_buttons[name]
-        text = self._get_display_name(name)
-        btn.config(text=f"▶ {text}", fg=C_TEXT, activeforeground=C_TEXT)
-        btn.set_border(3)
-        btn.unbind('<Enter>')
-        btn.unbind('<Leave>')
-
-    def _set_btn_done(self, name):
-        """一条龙已完成按钮（✓ + 粗黑边框）"""
-        btn = self.task_buttons[name]
-        text = self._get_display_name(name)
-        btn.config(text=f"✓ {text}", fg=C_TEXT, activeforeground=C_TEXT)
-        btn.set_border(3)
-        btn.unbind('<Enter>')
-        btn.unbind('<Leave>')
-
-    def _reset_all_task_btns(self):
-        """恢复所有任务按钮原色"""
-        for name in self.task_buttons:
-            self._set_btn_idle(name)
-
     def _get_display_name(self, name):
         for n, text, *_ in self.TASK_DEFS:
             if n == name:
@@ -550,7 +484,6 @@ class GameLauncherApp:
     # ========== 抓点 ==========
 
     def get_mouse_position_and_color(self):
-        self.task_buttons['zhuogui'].config(state=tk.DISABLED)
         self._capture_listener = mouse.Listener(on_click=self._on_global_click)
         self._capture_listener.start()
 
@@ -563,7 +496,6 @@ class GameLauncherApp:
         self.root.after(0, lambda: self._show_capture_result(x, y, color))
 
     def _show_capture_result(self, x, y, color):
-        self.task_buttons['zhuogui'].config(state=tk.NORMAL)
         self.root.attributes('-topmost', True)
         messagebox.showinfo("抓点", f"坐标: X={x}, Y={y}\n颜色: RGB({color[0]}, {color[1]}, {color[2]})", parent=self.root)
         self.root.attributes('-topmost', False)
@@ -580,24 +512,47 @@ class GameLauncherApp:
         messagebox.showinfo("窗口分辨率", f"{w}x{h}")
 
     def _toggle_midway(self):
-        """切换中途继续选择模式"""
-        if self._selecting_start_step:
-            self._selecting_start_step = False
-            self._midway_btn.config(text="中途继续")
-            # 恢复黄色按钮原色
-            for name in self.task_buttons:
-                self._set_btn_idle(name)
-            log("已取消中途继续选择")
-        else:
-            self._selecting_start_step = True
-            self._midway_btn.config(text="★ 选择中")
-            # 高亮任务按钮（粗黑边框），禁用悬停效果
-            for btn in self.task_buttons.values():
-                btn.config(fg=C_TEXT, activeforeground=C_TEXT)
-                btn.set_border(3)
-                btn.unbind('<Enter>')
-                btn.unbind('<Leave>')
-            log("请点击要开始的黄色任务按钮")
+        """弹出中途继续的任务选择窗口"""
+        self._open_midway_picker()
+
+    def _open_midway_picker(self):
+        """创建任务选择弹窗：点击某个任务即从该任务开始一条龙并关闭弹窗"""
+        if getattr(self, '_midway_picker', None) and self._midway_picker.winfo_exists():
+            self._midway_picker.lift()
+            return
+        win = tk.Toplevel(self.root)
+        win.title("从中途继续")
+        win.configure(bg=C_BG)
+        win.attributes('-topmost', True)
+        win.resizable(False, False)
+        self._midway_picker = win
+        # 弹窗居中显示
+        win.update_idletasks()
+        try:
+            px = self.root.winfo_rootx() + (self.root.winfo_width() - win.winfo_width()) // 2
+            py = self.root.winfo_rooty() + (self.root.winfo_height() - win.winfo_height()) // 2
+            win.geometry(f"+{px}+{py}")
+        except Exception:
+            pass
+
+        frame = tk.Frame(win, bg=C_BG)
+        frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        frame.columnconfigure(0, weight=1)
+        frame.columnconfigure(1, weight=1)
+        tk.Label(frame, text="选择从中途继续的任务", fg=C_TEXT, bg=C_BG,
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, columnspan=2, pady=(0, 6))
+
+        def pick(name):
+            win.destroy()
+            if name in self.task_stop_events and name != 'all_in_one':
+                self.task_stop_events.pop(name, None)
+            self._start_all_in_one_from(name)
+
+        for i, (name, text, *_r) in enumerate(self.TASK_DEFS):
+            row, col = 1 + i // 2, i % 2
+            self._make_btn(frame, text, lambda n=name: pick(n)).grid(
+                row=row, column=col, padx=2, pady=5, sticky='ew')
+        _ = _r
 
     def _dec_zhuogui_rounds(self):
         """捉鬼轮数减1（下限1）"""
@@ -633,12 +588,6 @@ class GameLauncherApp:
             return
 
         log("开始一条龙")
-        # 高亮所有任务按钮（粗黑边框）
-        for btn in self.task_buttons.values():
-            btn.config(fg=C_TEXT, activeforeground=C_TEXT)
-            btn.set_border(3)
-            btn.unbind('<Enter>')
-            btn.unbind('<Leave>')
         stop_event = threading.Event()
         self.task_stop_events['all_in_one'] = stop_event
         threading.Thread(target=self._all_in_one_thread, args=(windows, stop_event), daemon=True).start()
@@ -679,7 +628,6 @@ class GameLauncherApp:
             # 跳过师门（勾选后整个一条龙不执行师门）
             if task_name == 'shimen' and self.skip_shimen_var.get():
                 log("── 师门 已跳过 ──")
-                self.root.after(0, lambda n=task_name: self._set_btn_done(n))
                 last_task = task_name
                 continue
 
@@ -700,7 +648,6 @@ class GameLauncherApp:
                     return
 
             log(f"── {display} 开始 ──")
-            self.root.after(0, lambda n=task_name: self._set_btn_current(n))
 
             task_stop = threading.Event()
             self.task_stop_events['all_in_one_current'] = task_stop
@@ -710,7 +657,6 @@ class GameLauncherApp:
 
             if stop_event.is_set():
                 return
-            self.root.after(0, lambda n=task_name: self._set_btn_done(n))
             last_task = task_name
 
         # 领取奖励
@@ -722,8 +668,6 @@ class GameLauncherApp:
         from tasks.fuben import _jinru_index as fuben_jinru_idx
         import tasks.fuben as fuben_mod
         fuben_mod._jinru_index = 0
-        # 整个一条龙完成后才恢复所有按钮原色
-        self.root.after(0, self._reset_all_task_btns)
         self.task_stop_events.pop('all_in_one', None)
         log("一条龙全部完成")
 
@@ -781,15 +725,9 @@ class GameLauncherApp:
             stopped += 1
         for name in list(self.task_running.keys()):
             self.task_running[name] = False
-            if name in self.task_buttons:
-                self.root.after(0, lambda n=name: self._set_btn_idle(n))
         self.task_windows.clear()
         self.task_stop_events.clear()
         log(f"停止完成，已停止{stopped}个任务")
-
-    def _update_task_buttons_visibility(self):
-        """根据当前时间更新按钮的显示/隐藏（暂无需要隐藏的按钮）"""
-        pass
 
     def _start_button_update_timer(self):
         """启动定时器，每分钟更新一次按钮显示状态"""
