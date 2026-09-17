@@ -94,6 +94,10 @@ class GameLauncherApp:
         self.root.attributes('-topmost', True)
         self.root.after(500, lambda: self.root.attributes('-topmost', False))
 
+        # 加载用户配置（含窗口几何、捉鬼轮数、是否跳过师门）
+        self.cfg = {}
+        self._load_cfg()
+
         # 恢复窗口位置和大小
         geo = self._load_geometry()
         self.root.geometry(geo)
@@ -128,17 +132,34 @@ class GameLauncherApp:
         self._check_launcher()
         self._start_button_update_timer()
 
-    def _load_geometry(self):
-        """从配置文件读取上次的窗口位置和大小"""
+    def _load_cfg(self):
+        """加载用户配置到 self.cfg（window.json），不存在或损坏时用默认"""
         try:
             if os.path.exists(self.CONFIG_FILE):
-                with open(self.CONFIG_FILE, 'r') as f:
-                    cfg = json.load(f)
-                w, h = cfg.get('width', 380), cfg.get('height', 460)
-                # 高度下限：保证窗口能容纳当前按钮布局，防止旧配置截断底部按钮
-                h = max(h, 430)
-                x, y = cfg.get('x', 1700), cfg.get('y', 200)
-                return f"{w}x{h}+{x}+{y}"
+                with open(self.CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    self.cfg = json.load(f)
+        except Exception:
+            self.cfg = {}
+        if not isinstance(self.cfg, dict):
+            self.cfg = {}
+
+    def _save_cfg(self):
+        """将 self.cfg 写回 window.json（保留既有字段）"""
+        try:
+            with open(self.CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(self.cfg, f)
+        except Exception:
+            pass
+
+    def _load_geometry(self):
+        """从 self.cfg 读取上次的窗口位置和大小"""
+        try:
+            cfg = self.cfg or {}
+            w, h = cfg.get('width', 380), cfg.get('height', 460)
+            # 高度下限：保证窗口能容纳当前按钮布局，防止旧配置截断底部按钮
+            h = max(h, 430)
+            x, y = cfg.get('x', 1700), cfg.get('y', 200)
+            return f"{w}x{h}+{x}+{y}"
         except Exception:
             pass
         return "380x460+1700+200"
@@ -148,14 +169,11 @@ class GameLauncherApp:
         try:
             geo = self.root.geometry()
             parts = geo.replace('x', ' ').replace('+', ' ').split()
-            cfg = {
-                'width': int(parts[0]),
-                'height': int(parts[1]),
-                'x': int(parts[2]),
-                'y': int(parts[3])
-            }
-            with open(self.CONFIG_FILE, 'w') as f:
-                json.dump(cfg, f)
+            self.cfg['width'] = int(parts[0])
+            self.cfg['height'] = int(parts[1])
+            self.cfg['x'] = int(parts[2])
+            self.cfg['y'] = int(parts[3])
+            self._save_cfg()
         except Exception:
             pass
 
@@ -222,8 +240,9 @@ class GameLauncherApp:
         r += 1
 
         # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
-        self.zhuogui_rounds_var = tk.IntVar(value=5)
-        self.skip_shimen_var = tk.BooleanVar(value=True)   # 默认跳过师门
+        cfg = self.cfg or {}
+        self.zhuogui_rounds_var = tk.IntVar(value=int(cfg.get('zhuogui_rounds', 5)))
+        self.skip_shimen_var = tk.BooleanVar(value=cfg.get('skip_shimen', True))   # 默认跳过师门
 
         cfg_line = tk.Frame(btn_frame, bg=C_BG)
         cfg_line.grid(row=r, column=0, columnspan=2, padx=2, pady=(3, 4), sticky='ew')
@@ -247,6 +266,7 @@ class GameLauncherApp:
         # 右：跳过师门开关
         self.skip_shimen_check = tk.Checkbutton(
             cfg_line, text="跳过师门", variable=self.skip_shimen_var,
+            command=self._save_gui_prefs,
             fg=C_TEXT, bg=C_BG, activebackground=C_BG, activeforeground=C_TEXT,
             selectcolor=C_BG, font=("Microsoft YaHei", 10, "bold"), highlightthickness=0,
             padx=4, pady=2)
@@ -558,11 +578,19 @@ class GameLauncherApp:
         """捉鬼轮数减1（下限1）"""
         cur = self.zhuogui_rounds_var.get()
         self.zhuogui_rounds_var.set(max(1, cur - 1))
+        self._save_gui_prefs()
 
     def _inc_zhuogui_rounds(self):
         """捉鬼轮数加1（上限99）"""
         cur = self.zhuogui_rounds_var.get()
         self.zhuogui_rounds_var.set(min(99, cur + 1))
+        self._save_gui_prefs()
+
+    def _save_gui_prefs(self):
+        """保存捉鬼轮数/是否跳过师门到配置"""
+        self.cfg['zhuogui_rounds'] = int(self.zhuogui_rounds_var.get())
+        self.cfg['skip_shimen'] = bool(self.skip_shimen_var.get())
+        self._save_cfg()
 
     def _start_all_in_one_from(self, start_name):
         """从指定任务开始一条龙"""
@@ -597,7 +625,7 @@ class GameLauncherApp:
         ('zudui',     '组队',     None, 'func'),
         ('fuben',     '副本',     None, 'func'),
         ('fuben',     '副本',     None, 'func'),
-        ('zhuogui',   '捉鬼',     5,   'func'),
+        ('zhuogui',   '捉鬼',     None,   'func'),   # 轮数运行时从配置/控件读取
         ('jiesan',    '解散',     None, 'func'),
         ('shimen',    '师门',     None, 'func'),
         ('baotu',     '宝图',     None, 'func'),
@@ -631,12 +659,12 @@ class GameLauncherApp:
                 last_task = task_name
                 continue
 
-            # 捉鬼轮数从配置控件读取（默认2）
+            # 捉鬼轮数从配置控件读取（默认5）
             if task_name == 'zhuogui':
                 try:
                     rounds = int(self.zhuogui_rounds_var.get())
                 except (TypeError, ValueError):
-                    rounds = 5
+                    rounds = int((self.cfg or {}).get('zhuogui_rounds') or 5)
                 log(f"捉鬼轮数: {rounds}")
 
             # 两个副本之间加3-5秒延时
