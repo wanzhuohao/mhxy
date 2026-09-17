@@ -57,8 +57,6 @@ class BorderedButton(tk.Frame):
         self._inner.pack(fill=tk.BOTH, expand=True)
         self._border = border
         self.config(highlightthickness=0)
-        self._inner.bind('<Enter>', lambda e: self.set_border(self._border + 1))
-        self._inner.bind('<Leave>', lambda e: self.set_border(self._border))
 
     def set_border(self, thickness):
         self.config(padx=thickness, pady=thickness)
