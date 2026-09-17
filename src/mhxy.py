@@ -195,6 +195,27 @@ class GameLauncherApp:
             self.task_running[name] = False
         r += 6
 
+        # 一条龙配置：捉鬼轮数 + 跳过师门
+        cfg_line = tk.Frame(btn_frame, bg=C_BG)
+        cfg_line.grid(row=r, column=0, columnspan=2, padx=2, pady=(2, 1), sticky='ew')
+        cfg_line.columnconfigure(0, weight=1)
+        cfg_line.columnconfigure(1, weight=1)
+        tk.Label(cfg_line, text="捉鬼轮数", fg=C_TEXT, bg=C_BG,
+                 font=("Microsoft YaHei", 9)).grid(row=0, column=0, sticky='e')
+        self.zhuogui_rounds_var = tk.IntVar(value=2)
+        self.zhuogui_rounds_spin = tk.Spinbox(
+            cfg_line, from_=1, to=99, textvariable=self.zhuogui_rounds_var,
+            width=5, font=("Microsoft YaHei", 9),
+            bg=C_FRAME, fg=C_TEXT, buttonbackground=C_FRAME, relief='flat')
+        self.zhuogui_rounds_spin.grid(row=0, column=1, sticky='w')
+        self.skip_shimen_var = tk.BooleanVar(value=False)
+        self.skip_shimen_check = tk.Checkbutton(
+            cfg_line, text="跳过师门", variable=self.skip_shimen_var,
+            fg=C_TEXT, bg=C_BG, activebackground=C_BG, activeforeground=C_TEXT,
+            selectcolor=C_BG, font=("Microsoft YaHei", 9), highlightthickness=0)
+        self.skip_shimen_check.grid(row=0, column=2, padx=(6, 0), sticky='e')
+        r += 1
+
         # 一条龙 / 中途继续
         self._make_btn(btn_frame, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
             row=r, column=0, padx=2, pady=1, sticky='ew')
@@ -592,6 +613,21 @@ class GameLauncherApp:
                     continue
             if stop_event.is_set():
                 return
+
+            # 跳过师门（勾选后整个一条龙不执行师门）
+            if task_name == 'shimen' and self.skip_shimen_var.get():
+                log("── 师门 已跳过 ──")
+                self.root.after(0, lambda n=task_name: self._set_btn_done(n))
+                last_task = task_name
+                continue
+
+            # 捉鬼轮数从配置控件读取（默认2）
+            if task_name == 'zhuogui':
+                try:
+                    rounds = int(self.zhuogui_rounds_var.get())
+                except (TypeError, ValueError):
+                    rounds = 2
+                log(f"捉鬼轮数: {rounds}")
 
             # 两个副本之间加3-5秒延时
             if last_task == 'fuben' and task_name == 'fuben':
