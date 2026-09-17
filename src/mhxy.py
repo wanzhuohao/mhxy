@@ -52,7 +52,7 @@ class BorderedButton(tk.Frame):
             font=("Microsoft YaHei", 9, "bold"),
             fg=C_TEXT, bg="white", activebackground="white",
             activeforeground=C_TEXT, relief='flat', bd=0,
-            cursor='hand2', padx=4, pady=1
+            cursor='hand2', padx=4, pady=11
         )
         self._inner.pack(fill=tk.BOTH, expand=True)
         self._border = border
@@ -137,6 +137,8 @@ class GameLauncherApp:
                 with open(self.CONFIG_FILE, 'r') as f:
                     cfg = json.load(f)
                 w, h = cfg.get('width', 380), cfg.get('height', 460)
+                # 高度下限：按钮加高后内容需要足够高度，防止旧配置截断底部按钮
+                h = max(h, 860)
                 x, y = cfg.get('x', 1700), cfg.get('y', 200)
                 return f"{w}x{h}+{x}+{y}"
         except Exception:
@@ -198,21 +200,21 @@ class GameLauncherApp:
 
         # 窗口管理
         self._make_btn(btn_frame, "启动一个", self.launch_game_once).grid(
-            row=r, column=0, padx=2, pady=1, sticky='ew')
+            row=r, column=0, padx=2, pady=5, sticky='ew')
         self._make_btn(btn_frame, "启动五个", self.launch_game_five_times).grid(
-            row=r, column=1, padx=2, pady=1, sticky='ew')
+            row=r, column=1, padx=2, pady=5, sticky='ew')
         r += 1
         self._make_btn(btn_frame, "排列窗口", self.arrange_game_windows).grid(
-            row=r, column=0, padx=2, pady=1, sticky='ew')
+            row=r, column=0, padx=2, pady=5, sticky='ew')
         self.topmost_btn = self._make_btn(btn_frame, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
-        self.topmost_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
+        self.topmost_btn.grid(row=r, column=1, padx=2, pady=5, sticky='ew')
         r += 1
 
         # 无限鬼 / 抓点+分辨率（半宽）
         self._make_btn(btn_frame, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
-            row=r, column=0, padx=2, pady=1, sticky='ew')
+            row=r, column=0, padx=2, pady=5, sticky='ew')
         half_frame = tk.Frame(btn_frame, bg=C_BG)
-        half_frame.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
+        half_frame.grid(row=r, column=1, padx=2, pady=5, sticky='ew')
         half_frame.columnconfigure(0, weight=1)
         half_frame.columnconfigure(1, weight=1)
         self._make_btn(half_frame, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
@@ -225,7 +227,7 @@ class GameLauncherApp:
         self.task_buttons = {}
         for name, text, t_row, t_col in self.TASK_DEFS:
             btn = self._make_btn(btn_frame, text, lambda n=name: self.toggle_task(n), C_TASK, C_TASK_HOVER)
-            btn.grid(row=r + t_row, column=t_col, padx=2, pady=1, sticky='ew')
+            btn.grid(row=r + t_row, column=t_col, padx=2, pady=5, sticky='ew')
             self.task_buttons[name] = btn
             self.task_running[name] = False
         r += 6
@@ -264,14 +266,14 @@ class GameLauncherApp:
 
         # 一条龙 / 中途继续
         self._make_btn(btn_frame, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
-            row=r, column=0, padx=2, pady=1, sticky='ew')
+            row=r, column=0, padx=2, pady=5, sticky='ew')
         self._midway_btn = self._make_btn(btn_frame, "中途继续", self._toggle_midway, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER)
-        self._midway_btn.grid(row=r, column=1, padx=2, pady=1, sticky='ew')
+        self._midway_btn.grid(row=r, column=1, padx=2, pady=5, sticky='ew')
         r += 1
 
         # 停止
         self.stop_btn = self._make_btn(btn_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
-        self.stop_btn.grid(row=r, column=0, columnspan=2, padx=2, pady=1, sticky='ew')
+        self.stop_btn.grid(row=r, column=0, columnspan=2, padx=2, pady=5, sticky='ew')
 
     def _check_launcher(self):
         if not os.path.exists(self.game_launcher_path):
