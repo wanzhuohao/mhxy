@@ -21,24 +21,69 @@ import notify
 from tasks import TASK_FUNCS, TEAM_TASKS
 
 
-# ========== 颜色主题（黑白风格） ==========
-C_BG = "#f5f5f5"            # 主背景（近白）
-C_FRAME = "#e0e0e0"         # 面板背景（浅灰）
-C_BTN = "#3a3a3a"           # 普通按钮（深灰）
-C_BTN_HOVER = "#555555"     # 按钮悬停
-C_BTN_STOP = "#000000"      # 停止按钮（纯黑）
-C_BTN_STOP_HOVER = "#222222"
-C_BTN_SPECIAL = "#000000"   # 特殊按钮（纯黑）
-C_BTN_SPECIAL_HOVER = "#333333"
-C_TASK = "#4a4a4a"          # 任务按钮（中灰）
-C_TASK_HOVER = "#666666"
-C_ALL_IN_ONE = "#000000"    # 一条龙按钮（纯黑）
-C_ALL_IN_ONE_HOVER = "#333333"
-C_TASK_HIGHLIGHT = "#ffffff" # 中途继续/运行高亮（白底黑字）
-C_TEXT = "#ffffff"          # 文字（白色，用于深色按钮）
-C_TEXT_INVERT = "#000000"   # 反色文字（黑色，用于白底按钮）
-C_BORDER = "#999999"        # 边框（浅灰）
+# ========== 颜色主题（黑白纯色） ==========
+C_BG = "#ffffff"            # 主背景（纯白）
+C_FRAME = "#ffffff"         # 面板背景（纯白）
+C_BTN = "#ffffff"           # 按钮背景（白，黑边框黑字）
+C_BTN_HOVER = "#ffffff"     # 按钮悬停（背景不变，边框加粗）
+C_BTN_STOP = "#ffffff"      # 停止按钮（白，边框加粗强调）
+C_BTN_STOP_HOVER = "#ffffff"
+C_BTN_SPECIAL = "#ffffff"   # 特殊按钮（白）
+C_BTN_SPECIAL_HOVER = "#ffffff"
+C_TASK = "#ffffff"          # 任务按钮（白）
+C_TASK_HOVER = "#ffffff"
+C_ALL_IN_ONE = "#ffffff"    # 一条龙按钮（白）
+C_ALL_IN_ONE_HOVER = "#ffffff"
+C_TASK_HIGHLIGHT = "#ffffff" # 运行中/完成/高亮（白底黑字，粗黑边框）
+C_TEXT = "#000000"          # 文字（黑色）
+C_TEXT_INVERT = "#000000"   # 高亮态文字（黑色）
+C_BORDER = "#000000"        # 边框（纯黑）
 C_TITLE_BG = "#000000"      # 标题栏（纯黑）
+
+
+class BorderedButton(tk.Frame):
+    """带黑色边框的白色按钮：外层黑 Frame + 内层白 Button。
+    对外暴露 btn 的 config/cget/bind/unbind，方便与原有按钮 API 兼容。"""
+
+    def __init__(self, master, text="", command=None, border=1):
+        super().__init__(master, bg=C_BORDER, padx=border, pady=border)
+        self._inner = tk.Button(
+            self, text=text, command=command,
+            font=("Microsoft YaHei", 9, "bold"),
+            fg=C_TEXT, bg="white", activebackground="white",
+            activeforeground=C_TEXT, relief='flat', bd=0,
+            cursor='hand2', padx=4, pady=1
+        )
+        self._inner.pack(fill=tk.BOTH, expand=True)
+        self._border = border
+        self.config(highlightthickness=0)
+        self._inner.bind('<Enter>', lambda e: self.set_border(self._border + 1))
+        self._inner.bind('<Leave>', lambda e: self.set_border(self._border))
+
+    def set_border(self, thickness):
+        self.config(padx=thickness, pady=thickness)
+        self._border = thickness
+
+    def get_inner(self):
+        return self._inner
+
+    # ---- 转发到内层按钮 ----
+    def config(self, cnf=None, **kw):
+        if cnf or kw:
+            return self._inner.config(cnf, **kw)
+        return self._inner.config()
+
+    def cget(self, key):
+        return self._inner.cget(key)
+
+    def configure(self, cnf=None, **kw):
+        return self.config(cnf, **kw)
+
+    def bind(self, sequence=None, func=None, add=None):
+        return self._inner.bind(sequence, func, add)
+
+    def unbind(self, sequence=None, funcid=None):
+        return self._inner.unbind(sequence, funcid)
 
 
 class GameLauncherApp:
@@ -135,17 +180,8 @@ class GameLauncherApp:
     # ========== 按钮工厂 ==========
 
     def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER):
-        """创建统一风格按钮"""
-        btn = tk.Button(
-            parent, text=text, command=command,
-            font=("Microsoft YaHei", 9, "bold"),
-            fg=C_TEXT, bg=color, activebackground=hover,
-            activeforeground=C_TEXT, relief='flat', bd=0,
-            cursor='hand2', padx=6, pady=4
-        )
-        btn.bind('<Enter>', lambda e, b=btn, h=hover: b.config(bg=h))
-        btn.bind('<Leave>', lambda e, b=btn, c=color: b.config(bg=c))
-        return btn
+        """创建带黑色边框的白色按钮（白底黑字 + 黑边框）"""
+        return BorderedButton(parent, text=text, command=command)
 
     # ========== UI 构建 ==========
 
@@ -471,34 +507,32 @@ class GameLauncherApp:
     def _set_btn_running(self, name):
         btn = self.task_buttons[name]
         text = self._get_display_name(name)
-        btn.config(text=f"■ {text}", bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT,
-                   fg=C_TEXT_INVERT, activeforeground=C_TEXT_INVERT)
+        btn.config(text=f"■ {text}", fg=C_TEXT, activeforeground=C_TEXT)
+        btn.set_border(3)
         btn.unbind('<Enter>')
         btn.unbind('<Leave>')
 
     def _set_btn_idle(self, name):
         btn = self.task_buttons[name]
         text = self._get_display_name(name)
-        btn.config(text=text, bg=C_TASK, activebackground=C_TASK_HOVER,
-                   fg=C_TEXT, activeforeground=C_TEXT)
-        btn.bind('<Enter>', lambda e, b=btn: b.config(bg=C_TASK_HOVER))
-        btn.bind('<Leave>', lambda e, b=btn: b.config(bg=C_TASK))
+        btn.config(text=text, fg=C_TEXT, activeforeground=C_TEXT)
+        btn.set_border(1)
 
     def _set_btn_current(self, name):
-        """一条龙当前执行按钮（白底高亮）"""
+        """一条龙当前执行按钮（粗黑边框）"""
         btn = self.task_buttons[name]
         text = self._get_display_name(name)
-        btn.config(text=f"▶ {text}", bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT,
-                   fg=C_TEXT_INVERT, activeforeground=C_TEXT_INVERT)
+        btn.config(text=f"▶ {text}", fg=C_TEXT, activeforeground=C_TEXT)
+        btn.set_border(3)
         btn.unbind('<Enter>')
         btn.unbind('<Leave>')
 
     def _set_btn_done(self, name):
-        """一条龙已完成按钮（白底黑字加✓）"""
+        """一条龙已完成按钮（✓ + 粗黑边框）"""
         btn = self.task_buttons[name]
         text = self._get_display_name(name)
-        btn.config(text=f"✓ {text}", bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT,
-                   fg=C_TEXT_INVERT, activeforeground=C_TEXT_INVERT)
+        btn.config(text=f"✓ {text}", fg=C_TEXT, activeforeground=C_TEXT)
+        btn.set_border(3)
         btn.unbind('<Enter>')
         btn.unbind('<Leave>')
 
@@ -557,10 +591,10 @@ class GameLauncherApp:
         else:
             self._selecting_start_step = True
             self._midway_btn.config(text="★ 选择中")
-            # 高亮任务按钮（白底黑字），禁用悬停效果
+            # 高亮任务按钮（粗黑边框），禁用悬停效果
             for btn in self.task_buttons.values():
-                btn.config(bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT,
-                           fg=C_TEXT_INVERT, activeforeground=C_TEXT_INVERT)
+                btn.config(fg=C_TEXT, activeforeground=C_TEXT)
+                btn.set_border(3)
                 btn.unbind('<Enter>')
                 btn.unbind('<Leave>')
             log("请点击要开始的黄色任务按钮")
@@ -599,10 +633,10 @@ class GameLauncherApp:
             return
 
         log("开始一条龙")
-        # 高亮所有任务按钮（白底黑字）
+        # 高亮所有任务按钮（粗黑边框）
         for btn in self.task_buttons.values():
-            btn.config(bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT,
-                       fg=C_TEXT_INVERT, activeforeground=C_TEXT_INVERT)
+            btn.config(fg=C_TEXT, activeforeground=C_TEXT)
+            btn.set_border(3)
             btn.unbind('<Enter>')
             btn.unbind('<Leave>')
         stop_event = threading.Event()
