@@ -222,7 +222,7 @@ class GameLauncherApp:
         r += 1
 
         # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
-        self.zhuogui_rounds_var = tk.IntVar(value=2)
+        self.zhuogui_rounds_var = tk.IntVar(value=5)
         self.skip_shimen_var = tk.BooleanVar(value=True)   # 默认跳过师门
 
         cfg_line = tk.Frame(btn_frame, bg=C_BG)
@@ -597,7 +597,7 @@ class GameLauncherApp:
         ('zudui',     '组队',     None, 'func'),
         ('fuben',     '副本',     None, 'func'),
         ('fuben',     '副本',     None, 'func'),
-        ('zhuogui',   '捉鬼',     2,   'func'),
+        ('zhuogui',   '捉鬼',     5,   'func'),
         ('jiesan',    '解散',     None, 'func'),
         ('shimen',    '师门',     None, 'func'),
         ('baotu',     '宝图',     None, 'func'),
@@ -636,7 +636,7 @@ class GameLauncherApp:
                 try:
                     rounds = int(self.zhuogui_rounds_var.get())
                 except (TypeError, ValueError):
-                    rounds = 2
+                    rounds = 5
                 log(f"捉鬼轮数: {rounds}")
 
             # 两个副本之间加3-5秒延时
