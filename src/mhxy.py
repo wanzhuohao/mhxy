@@ -195,25 +195,36 @@ class GameLauncherApp:
             self.task_running[name] = False
         r += 6
 
-        # 一条龙配置：捉鬼轮数 + 跳过师门
+        # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
+        self.zhuogui_rounds_var = tk.IntVar(value=2)
+        self.skip_shimen_var = tk.BooleanVar(value=True)   # 默认跳过师门
+
         cfg_line = tk.Frame(btn_frame, bg=C_BG)
-        cfg_line.grid(row=r, column=0, columnspan=2, padx=2, pady=(2, 1), sticky='ew')
+        cfg_line.grid(row=r, column=0, columnspan=2, padx=2, pady=(3, 4), sticky='ew')
         cfg_line.columnconfigure(0, weight=1)
         cfg_line.columnconfigure(1, weight=1)
-        tk.Label(cfg_line, text="捉鬼轮数", fg=C_TEXT, bg=C_BG,
-                 font=("Microsoft YaHei", 9)).grid(row=0, column=0, sticky='e')
-        self.zhuogui_rounds_var = tk.IntVar(value=2)
-        self.zhuogui_rounds_spin = tk.Spinbox(
-            cfg_line, from_=1, to=99, textvariable=self.zhuogui_rounds_var,
-            width=5, font=("Microsoft YaHei", 9),
-            bg=C_FRAME, fg=C_TEXT, buttonbackground=C_FRAME, relief='flat')
-        self.zhuogui_rounds_spin.grid(row=0, column=1, sticky='w')
-        self.skip_shimen_var = tk.BooleanVar(value=False)
+
+        # 左：捉鬼轮数 [−] 数字 [+]
+        left = tk.Frame(cfg_line, bg=C_BG)
+        left.grid(row=0, column=0, sticky='w')
+        tk.Label(left, text="捉鬼轮数", fg=C_TEXT, bg=C_BG,
+                 font=("Microsoft YaHei", 10)).pack(side=tk.LEFT, padx=(2, 6))
+        self._make_btn(left, "−", self._dec_zhuogui_rounds,
+                       C_TASK, C_TASK_HOVER).pack(side=tk.LEFT, padx=2)
+        self.rounds_val_lbl = tk.Label(left, textvariable=self.zhuogui_rounds_var,
+                                       fg=C_TEXT, bg=C_FRAME, width=3,
+                                       font=("Microsoft YaHei", 11, "bold"))
+        self.rounds_val_lbl.pack(side=tk.LEFT, padx=4, ipady=2)
+        self._make_btn(left, "＋", self._inc_zhuogui_rounds,
+                       C_TASK, C_TASK_HOVER).pack(side=tk.LEFT, padx=2)
+
+        # 右：跳过师门开关
         self.skip_shimen_check = tk.Checkbutton(
             cfg_line, text="跳过师门", variable=self.skip_shimen_var,
             fg=C_TEXT, bg=C_BG, activebackground=C_BG, activeforeground=C_TEXT,
-            selectcolor=C_BG, font=("Microsoft YaHei", 9), highlightthickness=0)
-        self.skip_shimen_check.grid(row=0, column=2, padx=(6, 0), sticky='e')
+            selectcolor=C_BG, font=("Microsoft YaHei", 10, "bold"), highlightthickness=0,
+            padx=4, pady=2)
+        self.skip_shimen_check.grid(row=0, column=1, sticky='e')
         r += 1
 
         # 一条龙 / 中途继续
@@ -547,6 +558,16 @@ class GameLauncherApp:
                 btn.unbind('<Enter>')
                 btn.unbind('<Leave>')
             log("请点击要开始的黄色任务按钮")
+
+    def _dec_zhuogui_rounds(self):
+        """捉鬼轮数减1（下限1）"""
+        cur = self.zhuogui_rounds_var.get()
+        self.zhuogui_rounds_var.set(max(1, cur - 1))
+
+    def _inc_zhuogui_rounds(self):
+        """捉鬼轮数加1（上限99）"""
+        cur = self.zhuogui_rounds_var.get()
+        self.zhuogui_rounds_var.set(min(99, cur + 1))
 
     def _start_all_in_one_from(self, start_name):
         """从指定任务开始一条龙"""
