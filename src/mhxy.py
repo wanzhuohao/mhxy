@@ -538,14 +538,6 @@ class GameLauncherApp:
         win.attributes('-topmost', True)
         win.resizable(False, False)
         self._midway_picker = win
-        # 弹窗居中显示
-        win.update_idletasks()
-        try:
-            px = self.root.winfo_rootx() + (self.root.winfo_width() - win.winfo_width()) // 2
-            py = self.root.winfo_rooty() + (self.root.winfo_height() - win.winfo_height()) // 2
-            win.geometry(f"+{px}+{py}")
-        except Exception:
-            pass
 
         frame = tk.Frame(win, bg=C_BG)
         frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
@@ -585,7 +577,30 @@ class GameLauncherApp:
             row, col = 2 + i // 2, i % 2
             self._make_btn(frame, text, lambda n=name: pick(n)).grid(
                 row=row, column=col, padx=2, pady=5, sticky='ew')
-        _ = _r
+
+        # 内容构建完成后，用实际需求尺寸定位：居中于主窗口，且不超出主窗口/屏幕边界
+        win.update_idletasks()
+        try:
+            pw = win.winfo_reqwidth()
+            ph = win.winfo_reqheight()
+            mx = self.root.winfo_rootx()
+            my = self.root.winfo_rooty()
+            mw = self.root.winfo_width()
+            mh = self.root.winfo_height()
+            sw = self.root.winfo_screenwidth()
+            sh = self.root.winfo_screenheight()
+            # 居中于主窗口
+            px = mx + (mw - pw) // 2
+            py = my + (mh - ph) // 2
+            # 夹紧：弹窗整体保持在主窗口内
+            px = max(mx, min(px, mx + mw - pw))
+            py = max(my, min(py, my + mh - ph))
+            # 兜底：再保证不超出屏幕
+            px = max(0, min(px, sw - pw))
+            py = max(0, min(py, sh - ph))
+            win.geometry(f"+{px}+{py}")
+        except Exception:
+            pass
 
     def _dec_zhuogui_rounds(self):
         """捉鬼轮数减1（下限1）"""
