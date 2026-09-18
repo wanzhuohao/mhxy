@@ -5,7 +5,7 @@ import datetime
 from core import log, _screenshot_gray, TPL, _wait
 from context import safe_click
 from notify import send_feishu_msg
-from core import _match_in_region, _retry_click_activity, REGIONS
+from core import _match_in_region, _retry_click_activity, scroll_and_recheck, REGIONS
 
 
 def dati_start(stop_event):
@@ -97,6 +97,11 @@ def _dati_keju(stop_event):
             else:
                 still_missing.append(i)
         missing = still_missing
+
+    # 滚动活动列表再找
+    if missing:
+        scroll_found, missing, shot = scroll_and_recheck(TPL['keju'], REGIONS, missing, stop_event=stop_event)
+        found_keju.extend(scroll_found)
 
     for i, r in found_keju:
         safe_click(r[0] + 130, r[1] + 10)
@@ -280,6 +285,11 @@ def _dati_sanjie(stop_event):
             else:
                 still_missing.append(i)
         missing = still_missing
+
+    # 滚动活动列表再找
+    if missing:
+        scroll_found, missing, shot = scroll_and_recheck(TPL['sanjie'], REGIONS, missing, stop_event=stop_event)
+        found_sanji.extend(scroll_found)
 
     for i, r in found_sanji:
         safe_click(r[0] + 130, r[1] + 10)

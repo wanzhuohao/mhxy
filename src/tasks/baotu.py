@@ -4,7 +4,7 @@ import time
 from core import log, _screenshot_gray, _match, TPL, _wait, _retry
 from context import safe_click
 from notify import send_feishu_msg
-from core import _match_in_region, _retry_click_activity, REGIONS
+from core import _match_in_region, _retry_click_activity, scroll_and_recheck, REGIONS
 
 
 def baotu_start(stop_event):
@@ -92,6 +92,10 @@ def baotu_start(stop_event):
             else:
                 still_missing.append(i)
         missing = still_missing
+        # 滚动活动列表再找
+        if missing:
+            scroll_found, missing, shot = scroll_and_recheck(TPL['baoturenwu'], REGIONS, missing, yuzhi=0.65, stop_event=stop_event)
+            found_baotu.extend(scroll_found)
         if not missing:
             break
         if _wait(5, stop_event):

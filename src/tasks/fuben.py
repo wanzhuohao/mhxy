@@ -2,7 +2,7 @@
 
 import random
 import threading
-from core import log, find_pic, find_and_click, find_all, find_and_click_path, TPL, _wait, _retry, get_game_windows
+from core import log, find_pic, find_and_click, find_all, find_and_click_path, scroll_activity, TPL, _wait, _retry, get_game_windows
 from context import safe_click, get_window_rect
 from notify import send_feishu_msg
 
@@ -38,9 +38,19 @@ def fuben_start(stop_event: threading.Event):
             if _wait(3, stop_event):
                 return
             if not _retry(lambda: find_and_click(TPL['putong'], dx=100, dy=10, region=rect)):
-                log("副本：未找到普通按钮", "WARN")
-                send_feishu_msg("⚠️ 副本：未找到普通按钮")
-                return
+                # 滚动活动列表再找
+                found_putong = False
+                for _ in range(4):
+                    if stop_event.is_set():
+                        return
+                    scroll_activity(rect, direction=-1, steps=3)
+                    if find_and_click(TPL['putong'], dx=100, dy=10, region=rect):
+                        found_putong = True
+                        break
+                if not found_putong:
+                    log("副本：未找到普通按钮", "WARN")
+                    send_feishu_msg("⚠️ 副本：未找到普通按钮")
+                    return
         if _wait(2, stop_event):
             return
 

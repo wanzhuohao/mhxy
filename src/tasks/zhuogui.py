@@ -3,7 +3,7 @@
 import random
 import threading
 import time
-from core import log, TPL, REGIONS, find_pic, find_and_click, _retry, _wait
+from core import log, TPL, REGIONS, find_pic, find_and_click, scroll_activity, _retry, _wait
 from context import safe_click
 from notify import send_feishu_msg
 
@@ -42,8 +42,18 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
             if _wait(3, stop_event):
                 return
             if not _retry(lambda: find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10)):
-                log("捉鬼：未找到捉鬼按钮", "WARN")
-                return
+                # 滚动活动列表再找
+                found_zhuogui = False
+                for _ in range(4):
+                    if stop_event.is_set():
+                        return
+                    scroll_activity(w1_rect, direction=-1, steps=3)
+                    if find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10):
+                        found_zhuogui = True
+                        break
+                if not found_zhuogui:
+                    log("捉鬼：未找到捉鬼按钮", "WARN")
+                    return
         if _wait(2, stop_event):
             return
     else:
