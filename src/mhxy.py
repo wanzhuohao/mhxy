@@ -21,68 +21,23 @@ import notify
 from tasks import TASK_FUNCS, TEAM_TASKS
 
 
-# ========== 颜色主题（黑白纯色） ==========
-C_BG = "#ffffff"            # 主背景（纯白）
-C_FRAME = "#ffffff"         # 面板背景（纯白）
-C_BTN = "#ffffff"           # 按钮背景（白，黑边框黑字）
-C_BTN_HOVER = "#ffffff"     # 按钮悬停（背景不变，边框加粗）
-C_BTN_STOP = "#ffffff"      # 停止按钮（白，边框加粗强调）
-C_BTN_STOP_HOVER = "#ffffff"
-C_BTN_SPECIAL = "#ffffff"   # 特殊按钮（白）
-C_BTN_SPECIAL_HOVER = "#ffffff"
-C_TASK = "#ffffff"          # 任务按钮（白）
-C_TASK_HOVER = "#ffffff"
-C_ALL_IN_ONE = "#ffffff"    # 一条龙按钮（白）
-C_ALL_IN_ONE_HOVER = "#ffffff"
-C_TASK_HIGHLIGHT = "#ffffff" # 运行中/完成/高亮（白底黑字，粗黑边框）
-C_TEXT = "#000000"          # 文字（黑色）
-C_TEXT_INVERT = "#000000"   # 高亮态文字（黑色）
-C_BORDER = "#000000"        # 边框（纯黑）
-C_TITLE_BG = "#000000"      # 标题栏（纯黑）
-
-
-class BorderedButton(tk.Frame):
-    """带黑色边框的白色按钮：外层黑 Frame + 内层白 Button。
-    对外暴露 btn 的 config/cget/bind/unbind，方便与原有按钮 API 兼容。"""
-
-    def __init__(self, master, text="", command=None, border=1, compact=False):
-        super().__init__(master, bg=C_BORDER, padx=border, pady=border)
-        inner_pady = 2 if compact else 6
-        self._inner = tk.Button(
-            self, text=text, command=command,
-            font=("Microsoft YaHei", 9, "bold"),
-            fg=C_TEXT, bg="white", activebackground="white",
-            activeforeground=C_TEXT, relief='flat', bd=0,
-            cursor='hand2', padx=4, pady=inner_pady
-        )
-        self._inner.pack(fill=tk.BOTH, expand=True)
-        self._border = border
-        self.config(highlightthickness=0)
-
-    def set_border(self, thickness):
-        self.config(padx=thickness, pady=thickness)
-        self._border = thickness
-
-    def get_inner(self):
-        return self._inner
-
-    # ---- 转发到内层按钮 ----
-    def config(self, cnf=None, **kw):
-        if cnf or kw:
-            return self._inner.config(cnf, **kw)
-        return self._inner.config()
-
-    def cget(self, key):
-        return self._inner.cget(key)
-
-    def configure(self, cnf=None, **kw):
-        return self.config(cnf, **kw)
-
-    def bind(self, sequence=None, func=None, add=None):
-        return self._inner.bind(sequence, func, add)
-
-    def unbind(self, sequence=None, funcid=None):
-        return self._inner.unbind(sequence, funcid)
+# ========== 颜色主题（深色游戏风） ==========
+C_BG = "#1a1a2e"            # 主背景（深海蓝）
+C_FRAME = "#16213e"         # 面板背景
+C_BTN = "#0f3460"           # 普通按钮（靛蓝）
+C_BTN_HOVER = "#1a5276"     # 按钮悬停
+C_BTN_STOP = "#e74c3c"      # 停止按钮（朱红）
+C_BTN_STOP_HOVER = "#ff6b6b"
+C_BTN_SPECIAL = "#00b894"   # 特殊按钮（薄荷绿）
+C_BTN_SPECIAL_HOVER = "#00cec9"
+C_TASK = "#e17055"          # 任务按钮（珊瑚橙）
+C_TASK_HOVER = "#fab1a0"
+C_ALL_IN_ONE = "#0984e3"    # 一条龙按钮（宝石蓝）
+C_ALL_IN_ONE_HOVER = "#74b9ff"
+C_TASK_HIGHLIGHT = "#6c5ce7" # 中途继续高亮（星空紫）
+C_TEXT = "#dfe6e9"          # 文字（月光白）
+C_BORDER = "#2d3436"        # 边框
+C_TITLE_BG = "#0c0c1d"      # 标题栏（深夜）
 
 
 class GameLauncherApp:
@@ -158,7 +113,7 @@ class GameLauncherApp:
             cfg = self.cfg or {}
             w, h = cfg.get('width', 380), cfg.get('height', 460)
             # 高度下限：保证窗口能容纳当前分区布局，防止旧配置截断底部
-            h = max(h, 850)
+            h = max(h, 460)
             x, y = cfg.get('x', 1700), cfg.get('y', 200)
             return f"{w}x{h}+{x}+{y}"
         except Exception:
@@ -197,105 +152,112 @@ class GameLauncherApp:
     # ========== 按钮工厂 ==========
 
     def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER, compact=False):
-        """创建带黑色边框的白色按钮（白底黑字 + 黑边框）"""
-        return BorderedButton(parent, text=text, command=command, compact=compact)
+        """创建统一风格按钮"""
+        btn = tk.Button(
+            parent, text=text, command=command,
+            font=("Microsoft YaHei", 9, "bold"),
+            fg=C_TEXT, bg=color, activebackground=hover,
+            activeforeground=C_TEXT, relief='flat', bd=0,
+            cursor='hand2', padx=6, pady=4
+        )
+        btn.bind('<Enter>', lambda e, b=btn, h=hover: b.config(bg=h))
+        btn.bind('<Leave>', lambda e, b=btn, c=color: b.config(bg=c))
+        return btn
 
     # ========== UI 构建 ==========
 
     def _build_ui(self):
         # ---- 主容器 ----
         main = tk.Frame(self.root, bg=C_BG)
-        main.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
+        main.pack(fill=tk.BOTH, expand=True, padx=6, pady=4)
 
         # 读取配置（捉鬼轮数/跳过师门）
         cfg = self.cfg or {}
         self.zhuogui_rounds_var = tk.IntVar(value=int(cfg.get('zhuogui_rounds', 5)))
         self.skip_shimen_var = tk.BooleanVar(value=cfg.get('skip_shimen', True))
 
-        # ============ 分区 1：窗口管理 ============
-        sec1 = self._make_section(main, "窗口管理")
-        sec1.columnconfigure(0, weight=1)
-        sec1.columnconfigure(1, weight=1)
-        self._make_btn(sec1, "启动一个", self.launch_game_once).grid(row=0, column=0, padx=2, pady=3, sticky='ew')
-        self._make_btn(sec1, "启动五个", self.launch_game_five_times).grid(row=0, column=1, padx=2, pady=3, sticky='ew')
-        self._make_btn(sec1, "排列窗口", self.arrange_game_windows).grid(row=1, column=0, padx=2, pady=3, sticky='ew')
-        self.topmost_btn = self._make_btn(sec1, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
-        self.topmost_btn.grid(row=1, column=1, padx=2, pady=3, sticky='ew')
+        # 统一 2 列 grid
+        btn_frame = tk.Frame(main, bg=C_BG)
+        btn_frame.pack(fill=tk.X, pady=(0, 2))
+        btn_frame.columnconfigure(0, weight=1)
+        btn_frame.columnconfigure(1, weight=1)
 
-        # ============ 任务（单独执行单个任务，滚动列表） ============
-        sec_task = self._make_section(main, "任务")
-        task_list_frame = tk.Frame(sec_task, bg=C_BG)
-        task_list_frame.pack(fill=tk.BOTH, expand=True)
-        self.task_listbox = tk.Listbox(
-            task_list_frame, bg="#ffffff", fg=C_TEXT, selectbackground=C_BORDER,
-            selectforeground="#ffffff", height=3, activestyle='none',
-            font=("Microsoft YaHei", 10), bd=1, relief='solid',
-            highlightthickness=0, exportselection=False)
-        self.task_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        task_sb = tk.Scrollbar(task_list_frame, command=self.task_listbox.yview)
-        task_sb.pack(side=tk.RIGHT, fill=tk.Y)
-        self.task_listbox.config(yscrollcommand=task_sb.set)
-        for _n, text, *_r in self.TASK_DEFS:
-            self.task_listbox.insert(tk.END, text)
-        self.task_listbox.bind('<Double-Button-1>', self._on_task_list_activate)
-        # 提示
-        tk.Label(sec_task, text="双击任务即单独执行", fg="#000000", bg=C_BG,
-                 font=("Microsoft YaHei", 8)).pack(anchor='w', pady=(2, 0))
+        r = 0
 
-        # ============ 分区 2：一条龙 ============
-        sec2 = self._make_section(main, "一条龙")
-        sec2.columnconfigure(0, weight=1)
-        sec2.columnconfigure(1, weight=1)
-        self._make_btn(sec2, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
-            row=0, column=0, padx=2, pady=3, sticky='ew')
-        self._midway_btn = self._make_btn(sec2, "中途继续", self._toggle_midway, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER)
-        self._midway_btn.grid(row=0, column=1, padx=2, pady=3, sticky='ew')
+        # 窗口管理
+        self._make_btn(btn_frame, "启动一个", self.launch_game_once).grid(
+            row=r, column=0, padx=2, pady=2, sticky='ew')
+        self._make_btn(btn_frame, "启动五个", self.launch_game_five_times).grid(
+            row=r, column=1, padx=2, pady=2, sticky='ew')
+        r += 1
+        self._make_btn(btn_frame, "排列窗口", self.arrange_game_windows).grid(
+            row=r, column=0, padx=2, pady=2, sticky='ew')
+        self.topmost_btn = self._make_btn(btn_frame, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
+        self.topmost_btn.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
+        r += 1
 
-        # 捉鬼轮数行
-        rounds_line = tk.Frame(sec2, bg=C_BG)
-        rounds_line.grid(row=1, column=0, columnspan=2, padx=2, pady=(6, 2), sticky='ew')
-        rounds_line.columnconfigure(0, weight=0)
-        tk.Label(rounds_line, text="捉鬼轮数", fg=C_TEXT, bg=C_BG,
+        # 无限鬼 / 抓点+分辨率（半宽）
+        self._make_btn(btn_frame, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
+            row=r, column=0, padx=2, pady=2, sticky='ew')
+        half_frame = tk.Frame(btn_frame, bg=C_BG)
+        half_frame.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
+        half_frame.columnconfigure(0, weight=1)
+        half_frame.columnconfigure(1, weight=1)
+        self._make_btn(half_frame, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
+            row=0, column=0, padx=1, sticky='ew')
+        self._make_btn(half_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
+            row=0, column=1, padx=1, sticky='ew')
+        r += 1
+
+        # 任务按钮（橙色）
+        self.task_buttons = {}
+        for name, text, t_row, t_col in self.TASK_DEFS:
+            btn = self._make_btn(btn_frame, text, lambda n=name: self.toggle_task(n), C_TASK, C_TASK_HOVER)
+            btn.grid(row=r + t_row, column=t_col, padx=2, pady=2, sticky='ew')
+            self.task_buttons[name] = btn
+            self.task_running[name] = False
+        r += 6
+
+        # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
+        cfg_line = tk.Frame(btn_frame, bg=C_BG)
+        cfg_line.grid(row=r, column=0, columnspan=2, padx=2, pady=(3, 2), sticky='ew')
+        cfg_line.columnconfigure(0, weight=1)
+        cfg_line.columnconfigure(1, weight=1)
+
+        # 左：捉鬼轮数 [−] 数字 [+]
+        left = tk.Frame(cfg_line, bg=C_BG)
+        left.grid(row=0, column=0, sticky='w')
+        tk.Label(left, text="捉鬼轮数", fg=C_TEXT, bg=C_BG,
                  font=("Microsoft YaHei", 10)).pack(side=tk.LEFT, padx=(2, 6))
-        self._make_btn(rounds_line, "−", self._dec_zhuogui_rounds).pack(side=tk.LEFT, padx=2)
-        self.rounds_val_lbl = tk.Label(rounds_line, textvariable=self.zhuogui_rounds_var,
+        self._make_btn(left, "−", self._dec_zhuogui_rounds,
+                       C_TASK, C_TASK_HOVER).pack(side=tk.LEFT, padx=2)
+        self.rounds_val_lbl = tk.Label(left, textvariable=self.zhuogui_rounds_var,
                                        fg=C_TEXT, bg=C_FRAME, width=3,
                                        font=("Microsoft YaHei", 11, "bold"))
         self.rounds_val_lbl.pack(side=tk.LEFT, padx=4, ipady=2)
-        self._make_btn(rounds_line, "＋", self._inc_zhuogui_rounds).pack(side=tk.LEFT, padx=2)
+        self._make_btn(left, "＋", self._inc_zhuogui_rounds,
+                       C_TASK, C_TASK_HOVER).pack(side=tk.LEFT, padx=2)
 
-        # 跳过师门行
+        # 右：跳过师门开关
         self.skip_shimen_check = tk.Checkbutton(
-            sec2, text="跳过师门", variable=self.skip_shimen_var, command=self._save_gui_prefs,
+            cfg_line, text="跳过师门", variable=self.skip_shimen_var,
+            command=self._save_gui_prefs,
             fg=C_TEXT, bg=C_BG, activebackground=C_BG, activeforeground=C_TEXT,
             selectcolor=C_BG, font=("Microsoft YaHei", 10, "bold"), highlightthickness=0,
             padx=4, pady=2)
-        self.skip_shimen_check.grid(row=2, column=0, columnspan=2, sticky='w', padx=6, pady=(2, 4))
+        self.skip_shimen_check.grid(row=0, column=1, sticky='e')
+        r += 1
 
-        # ============ 分区 3：工具 ============
-        sec3 = self._make_section(main, "工具")
-        sec3.columnconfigure(0, weight=1)
-        sec3.columnconfigure(1, weight=1)
-        self._make_btn(sec3, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
-            row=0, column=0, padx=2, pady=3, sticky='ew')
-        half = tk.Frame(sec3, bg=C_BG)
-        half.grid(row=0, column=1, padx=2, pady=3, sticky='ew')
-        half.columnconfigure(0, weight=1)
-        half.columnconfigure(1, weight=1)
-        self._make_btn(half, "抓点", self.get_mouse_position_and_color).grid(row=0, column=0, padx=1, sticky='ew')
-        self._make_btn(half, "分辨率", self.get_window_resolution).grid(row=0, column=1, padx=1, sticky='ew')
-        self.stop_btn = self._make_btn(sec3, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
-        self.stop_btn.grid(row=1, column=0, columnspan=2, padx=2, pady=3, sticky='ew')
+        # 一条龙 / 中途继续
+        self._make_btn(btn_frame, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
+            row=r, column=0, padx=2, pady=2, sticky='ew')
+        self._midway_btn = self._make_btn(btn_frame, "中途继续", self._toggle_midway, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER)
+        self._midway_btn.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
+        r += 1
 
-    def _make_section(self, parent, title):
-        """创建带标题的分区（黑白风格）：黑边框标题 + 白色内容区"""
-        sec = tk.LabelFrame(parent, text=title, fg=C_TEXT, bg=C_BG,
-                            font=("Microsoft YaHei", 10, "bold"),
-                            padx=6, pady=6, bd=1,
-                            highlightthickness=1, highlightbackground=C_BORDER,
-                            highlightcolor=C_BORDER, relief='solid')
-        sec.pack(fill=tk.X, pady=(4, 2))
-        return sec
+        # 停止
+        self.stop_btn = self._make_btn(btn_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
+        self.stop_btn.grid(row=r, column=0, columnspan=2, padx=2, pady=2, sticky='ew')
 
     def _check_launcher(self):
         if not os.path.exists(self.game_launcher_path):
@@ -454,18 +416,13 @@ class GameLauncherApp:
 
     # ========== 任务调度 ==========
 
-    def _on_task_list_activate(self, _event=None):
-        """双击任务列表项 → 单独执行该任务"""
-        sel = self.task_listbox.curselection()
-        if not sel:
-            return
-        idx = sel[0]
-        if 0 <= idx < len(self.TASK_DEFS):
-            name = self.TASK_DEFS[idx][0]
-            self.toggle_task(name)
-
     def toggle_task(self, name, rounds=None):
         """启动任务；若该任务在运行则停止（rounds 可指定轮数）"""
+        btn = self.task_buttons.get(name)
+        if btn:
+            btn.config(state=tk.DISABLED)
+            self.root.after(300, lambda: btn.config(state=tk.NORMAL))
+
         if self.task_running.get(name):
             # 停止
             stop_event = self.task_stop_events.get(name)
@@ -473,6 +430,7 @@ class GameLauncherApp:
                 stop_event.set()
             self.task_running[name] = False
             self.task_windows.pop(name, None)
+            self._set_btn_idle(name)
             log(f"停止{name}")
         else:
             # 启动
@@ -481,6 +439,7 @@ class GameLauncherApp:
             self.task_stop_events[name] = stop_event
             func = TASK_FUNCS.get(name)
             if func:
+                self._set_btn_running(name)
                 threading.Thread(target=self._dispatch_task, args=(name, func, stop_event, rounds), daemon=True).start()
             log(f"启动{name}")
 
@@ -491,6 +450,7 @@ class GameLauncherApp:
         if not all_windows:
             log("未找到游戏窗口", "WARN")
             self.task_running[name] = False
+            self.root.after(0, lambda: self._set_btn_idle(name))
             return
 
         # 所有任务统一：在窗口1上全屏处理（任务内部已按 REGIONS 遍历5个窗口）
@@ -502,6 +462,7 @@ class GameLauncherApp:
         self.task_running[name] = False
         self.task_windows.pop(name, None)
         self.task_stop_events.pop(name, None)
+        self.root.after(0, lambda: self._set_btn_idle(name))
         log(f"{name}完成")
 
     def _run_single_task(self, hwnd, rect, func, stop_event, rounds=None):
@@ -517,6 +478,41 @@ class GameLauncherApp:
         except Exception as e:
             log(f"窗口执行出错: {e}", "ERR")
             stop_event.set()
+
+    def _set_btn_running(self, name):
+        btn = self.task_buttons[name]
+        text = self._get_display_name(name)
+        btn.config(text=f"■ {text}", bg=C_BTN_STOP, activebackground=C_BTN_STOP_HOVER)
+        btn.unbind('<Enter>')
+        btn.unbind('<Leave>')
+
+    def _set_btn_idle(self, name):
+        btn = self.task_buttons[name]
+        text = self._get_display_name(name)
+        btn.config(text=text, bg=C_TASK, activebackground=C_TASK_HOVER)
+        btn.bind('<Enter>', lambda e, b=btn: b.config(bg=C_TASK_HOVER))
+        btn.bind('<Leave>', lambda e, b=btn: b.config(bg=C_TASK))
+
+    def _set_btn_current(self, name):
+        """一条龙当前执行按钮"""
+        btn = self.task_buttons[name]
+        text = self._get_display_name(name)
+        btn.config(text=f"▶ {text}", bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT)
+        btn.unbind('<Enter>')
+        btn.unbind('<Leave>')
+
+    def _set_btn_done(self, name):
+        """一条龙已完成按钮"""
+        btn = self.task_buttons[name]
+        text = self._get_display_name(name)
+        btn.config(text=f"✓ {text}", bg=C_BTN_SPECIAL, activebackground=C_BTN_SPECIAL_HOVER)
+        btn.unbind('<Enter>')
+        btn.unbind('<Leave>')
+
+    def _reset_all_task_btns(self):
+        """恢复所有任务按钮原色"""
+        for name in self.task_buttons:
+            self._set_btn_idle(name)
 
     def _get_display_name(self, name):
         for n, text, *_ in self.TASK_DEFS:
@@ -654,6 +650,11 @@ class GameLauncherApp:
             return
 
         log("开始一条龙")
+        # 高亮所有任务按钮
+        for btn in self.task_buttons.values():
+            btn.config(bg=C_TASK_HIGHLIGHT, activebackground=C_TASK_HIGHLIGHT)
+            btn.unbind('<Enter>')
+            btn.unbind('<Leave>')
         stop_event = threading.Event()
         self.task_stop_events['all_in_one'] = stop_event
         threading.Thread(target=self._all_in_one_thread, args=(windows, stop_event), daemon=True).start()
@@ -714,6 +715,7 @@ class GameLauncherApp:
                     return
 
             log(f"── {display} 开始 ──")
+            self.root.after(0, lambda n=task_name: self._set_btn_current(n))
 
             task_stop = threading.Event()
             self.task_stop_events['all_in_one_current'] = task_stop
@@ -723,6 +725,7 @@ class GameLauncherApp:
 
             if stop_event.is_set():
                 return
+            self.root.after(0, lambda n=task_name: self._set_btn_done(n))
             last_task = task_name
 
         # 领取奖励
@@ -735,6 +738,7 @@ class GameLauncherApp:
         import tasks.fuben as fuben_mod
         fuben_mod._jinru_index = 0
         self.task_stop_events.pop('all_in_one', None)
+        self.root.after(0, self._reset_all_task_btns)
         log("一条龙全部完成")
 
     def claim_rewards(self, windows, stop_event=None):
