@@ -328,10 +328,10 @@ class GameLauncherApp:
             try:
                 if win32gui.IsIconic(hwnd):
                     win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-                rect = win32gui.GetWindowRect(hwnd)
-                w, h = rect[2] - rect[0], rect[3] - rect[1]
                 x, y = positions[i]
-                win32gui.MoveWindow(hwnd, x, y, w, h, True)
+                # 游戏窗口强制 4:3，870 宽必须配 680 高（客户区 854×641），
+                # 用 692 会因比例不符被游戏吸附回 864×675
+                win32gui.MoveWindow(hwnd, x, y, 870, 680, True)
                 try:
                     win32gui.SetForegroundWindow(hwnd)
                 except Exception:
