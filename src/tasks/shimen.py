@@ -2,7 +2,7 @@
 
 import time
 import threading
-from core import log, _screenshot_gray, _match, _match_in_region, _retry_click_activity, find_and_click, TPL, REGIONS, _wait, _retry
+from core import log, _screenshot_gray, _match, _match_in_region, _retry_click_activity, scroll_and_recheck, find_and_click, TPL, REGIONS, _wait, _retry
 from context import safe_click
 from notify import send_feishu_msg
 
@@ -91,6 +91,11 @@ def shimen_start(stop_event: threading.Event):
             else:
                 still_missing.append(i)
         missing = still_missing
+
+    # 滚动活动列表再找
+    if missing:
+        scroll_found, missing, shot = scroll_and_recheck(TPL['huodongshimen'], REGIONS, missing, stop_event=stop_event)
+        found_shimen.extend(scroll_found)
 
     if missing:
         for i in missing:

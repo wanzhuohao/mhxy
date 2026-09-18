@@ -47,7 +47,7 @@ class BorderedButton(tk.Frame):
 
     def __init__(self, master, text="", command=None, border=1, compact=False):
         super().__init__(master, bg=C_BORDER, padx=border, pady=border)
-        inner_pady = 2 if compact else 11
+        inner_pady = 2 if compact else 6
         self._inner = tk.Button(
             self, text=text, command=command,
             font=("Microsoft YaHei", 9, "bold"),
@@ -222,15 +222,25 @@ class GameLauncherApp:
         self.topmost_btn = self._make_btn(sec1, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
         self.topmost_btn.grid(row=1, column=1, padx=2, pady=3, sticky='ew')
 
-        # ============ 任务（单独执行单个任务） ============
+        # ============ 任务（单独执行单个任务，滚动列表） ============
         sec_task = self._make_section(main, "任务")
-        sec_task.columnconfigure(0, weight=1)
-        sec_task.columnconfigure(1, weight=1)
-        sec_task.columnconfigure(2, weight=1)
-        for i, (name, text, *_r) in enumerate(self.TASK_DEFS):
-            row, col = divmod(i, 3)
-            self._make_btn(sec_task, text, lambda n=name: self.toggle_task(n),
-                           compact=True).grid(row=row, column=col, padx=2, pady=2, sticky='ew')
+        task_list_frame = tk.Frame(sec_task, bg=C_BG)
+        task_list_frame.pack(fill=tk.BOTH, expand=True)
+        self.task_listbox = tk.Listbox(
+            task_list_frame, bg="#ffffff", fg=C_TEXT, selectbackground=C_BORDER,
+            selectforeground="#ffffff", height=3, activestyle='none',
+            font=("Microsoft YaHei", 10), bd=1, relief='solid',
+            highlightthickness=0, exportselection=False)
+        self.task_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        task_sb = tk.Scrollbar(task_list_frame, command=self.task_listbox.yview)
+        task_sb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.task_listbox.config(yscrollcommand=task_sb.set)
+        for _n, text, *_r in self.TASK_DEFS:
+            self.task_listbox.insert(tk.END, text)
+        self.task_listbox.bind('<Double-Button-1>', self._on_task_list_activate)
+        # 提示
+        tk.Label(sec_task, text="双击任务即单独执行", fg="#000000", bg=C_BG,
+                 font=("Microsoft YaHei", 8)).pack(anchor='w', pady=(2, 0))
 
         # ============ 分区 2：一条龙 ============
         sec2 = self._make_section(main, "一条龙")
@@ -443,6 +453,16 @@ class GameLauncherApp:
         context.safe_click(x, y)
 
     # ========== 任务调度 ==========
+
+    def _on_task_list_activate(self, _event=None):
+        """双击任务列表项 → 单独执行该任务"""
+        sel = self.task_listbox.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        if 0 <= idx < len(self.TASK_DEFS):
+            name = self.TASK_DEFS[idx][0]
+            self.toggle_task(name)
 
     def toggle_task(self, name, rounds=None):
         """启动任务；若该任务在运行则停止（rounds 可指定轮数）"""
