@@ -3,18 +3,90 @@
 import random
 import threading
 import time
+import win32gui
+import win32con
+import win32api
 from core import log, TPL, REGIONS, find_pic, find_and_click, scroll_activity, _retry, _wait
 from context import safe_click
 from notify import send_feishu_msg
 
 
+def _activate_window(hwnd, rect):
+    """激活窗口到前台，多种方案兜底"""
+    try:
+        win32gui.SetForegroundWindow(hwnd)
+        return
+    except Exception:
+        pass
+    try:
+        win32api.keybd_event(0x12, 0, 0, 0)
+        win32api.keybd_event(0x12, 0, win32con.KEYEVENTF_KEYUP, 0)
+        win32gui.SetForegroundWindow(hwnd)
+        return
+    except Exception:
+        pass
+    cx = (rect[0] + rect[2]) // 2
+    safe_click(cx, rect[1] + 10)
+    time.sleep(0.3)
+
+
+def claim_double_points(stop_event):
+    """逐个窗口打开挂机面板领取双倍点数，完成后关闭面板。
+    参考 mhxy_code 的 claim_double_points 实现。"""
+    from core import get_game_windows, find_and_click as _fac
+    windows = get_game_windows()
+    if not windows:
+        log("领取双倍点数：未找到游戏窗口", "WARN")
+        return
+
+    for index, (hwnd, rect) in enumerate(windows[:5], start=1):
+        if stop_event.is_set():
+            return
+        try:
+            ox, oy = rect[0], rect[1]
+            _activate_window(hwnd, rect)
+            time.sleep(0.5)
+
+            # 1. 点挂机按钮 (383,60)
+            safe_click(ox + 383, oy + 60)
+            log(f"窗口{index} 领取双倍：点击挂机 ({ox+383},{oy+60})")
+            time.sleep(1)
+
+            # 2. 点领取按钮 (726,560) 两次
+            for attempt in range(1, 3):
+                if stop_event.is_set():
+                    return
+                safe_click(ox + 726, oy + 560)
+                log(f"窗口{index} 领取双倍：第{attempt}次点击领取 ({ox+726},{oy+560})")
+                time.sleep(1)
+
+            # 3. 关闭挂机面板
+            close_region = (ox + 650, oy + 50, ox + 870, oy + 230)
+            if _fac(TPL['panel_x'], yuzhi=0.7, region=close_region):
+                log(f"窗口{index} 领取双倍：关闭挂机面板")
+            else:
+                safe_click(ox + 803, oy + 120)
+                log(f"窗口{index} 领取双倍：坐标兜底关闭 ({ox+803},{oy+120})", "WARN")
+            time.sleep(0.5)
+        except Exception as e:
+            log(f"窗口{index} 领取双倍失败: {e}", "ERR")
+
+    log("领取双倍点数完成")
+
+
 def zhuogui_start(stop_event: threading.Event, rounds=2):
-    """捉鬼：点击活动进入 → 点击去接受任务 → 等待完成 → 循环指定轮数
+    """捉鬼：领取双倍 → 点击活动进入 → 点击去接受任务 → 等待完成 → 循环指定轮数
 
     完成图检测：逐秒检测 TPL['zhuogui_wancheng']，每10秒打印一次当前匹配度，
     便于调整阈值。
     """
     log("捉鬼任务开始")
+
+    # 第0步：领取挂机双倍点数
+    log("── 领取挂机双倍点数 ──")
+    claim_double_points(stop_event)
+    if stop_event.is_set():
+        return
 
     # 固定取屏幕左上角的窗口1
     w1_rect = REGIONS[0]
