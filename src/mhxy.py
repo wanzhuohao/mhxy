@@ -158,7 +158,7 @@ class GameLauncherApp:
             cfg = self.cfg or {}
             w, h = cfg.get('width', 380), cfg.get('height', 460)
             # 高度下限：保证窗口能容纳当前分区布局，防止旧配置截断底部
-            h = max(h, 950)
+            h = max(h, 850)
             x, y = cfg.get('x', 1700), cfg.get('y', 200)
             return f"{w}x{h}+{x}+{y}"
         except Exception:
@@ -226,8 +226,9 @@ class GameLauncherApp:
         sec_task = self._make_section(main, "任务")
         sec_task.columnconfigure(0, weight=1)
         sec_task.columnconfigure(1, weight=1)
+        sec_task.columnconfigure(2, weight=1)
         for i, (name, text, *_r) in enumerate(self.TASK_DEFS):
-            row, col = i // 2, i % 2
+            row, col = divmod(i, 3)
             self._make_btn(sec_task, text, lambda n=name: self.toggle_task(n),
                            compact=True).grid(row=row, column=col, padx=2, pady=2, sticky='ew')
 
