@@ -156,8 +156,8 @@ class GameLauncherApp:
         try:
             cfg = self.cfg or {}
             w, h = cfg.get('width', 380), cfg.get('height', 460)
-            # 高度下限：保证窗口能容纳当前按钮布局，防止旧配置截断底部按钮
-            h = max(h, 430)
+            # 高度下限：保证窗口能容纳当前分区布局，防止旧配置截断底部
+            h = max(h, 620)
             x, y = cfg.get('x', 1700), cfg.get('y', 200)
             return f"{w}x{h}+{x}+{y}"
         except Exception:
@@ -204,85 +204,77 @@ class GameLauncherApp:
     def _build_ui(self):
         # ---- 主容器 ----
         main = tk.Frame(self.root, bg=C_BG)
-        main.pack(fill=tk.BOTH, expand=True, padx=6, pady=4)
+        main.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
 
-        # 统一 2 列 grid
-        btn_frame = tk.Frame(main, bg=C_BG)
-        btn_frame.pack(fill=tk.X, pady=(0, 2))
-        btn_frame.columnconfigure(0, weight=1)
-        btn_frame.columnconfigure(1, weight=1)
-
-        r = 0
-
-        # 窗口管理
-        self._make_btn(btn_frame, "启动一个", self.launch_game_once).grid(
-            row=r, column=0, padx=2, pady=5, sticky='ew')
-        self._make_btn(btn_frame, "启动五个", self.launch_game_five_times).grid(
-            row=r, column=1, padx=2, pady=5, sticky='ew')
-        r += 1
-        self._make_btn(btn_frame, "排列窗口", self.arrange_game_windows).grid(
-            row=r, column=0, padx=2, pady=5, sticky='ew')
-        self.topmost_btn = self._make_btn(btn_frame, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
-        self.topmost_btn.grid(row=r, column=1, padx=2, pady=5, sticky='ew')
-        r += 1
-
-        # 无限鬼 / 抓点+分辨率（半宽）
-        self._make_btn(btn_frame, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
-            row=r, column=0, padx=2, pady=5, sticky='ew')
-        half_frame = tk.Frame(btn_frame, bg=C_BG)
-        half_frame.grid(row=r, column=1, padx=2, pady=5, sticky='ew')
-        half_frame.columnconfigure(0, weight=1)
-        half_frame.columnconfigure(1, weight=1)
-        self._make_btn(half_frame, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
-            row=0, column=0, padx=1, sticky='ew')
-        self._make_btn(half_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
-            row=0, column=1, padx=1, sticky='ew')
-        r += 1
-
-        # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
+        # 读取配置（捉鬼轮数/跳过师门）
         cfg = self.cfg or {}
         self.zhuogui_rounds_var = tk.IntVar(value=int(cfg.get('zhuogui_rounds', 5)))
-        self.skip_shimen_var = tk.BooleanVar(value=cfg.get('skip_shimen', True))   # 默认跳过师门
+        self.skip_shimen_var = tk.BooleanVar(value=cfg.get('skip_shimen', True))
 
-        cfg_line = tk.Frame(btn_frame, bg=C_BG)
-        cfg_line.grid(row=r, column=0, columnspan=2, padx=2, pady=(3, 4), sticky='ew')
-        cfg_line.columnconfigure(0, weight=1)
-        cfg_line.columnconfigure(1, weight=1)
+        # ============ 分区 1：窗口管理 ============
+        sec1 = self._make_section(main, "窗口管理")
+        sec1.columnconfigure(0, weight=1)
+        sec1.columnconfigure(1, weight=1)
+        self._make_btn(sec1, "启动一个", self.launch_game_once).grid(row=0, column=0, padx=2, pady=3, sticky='ew')
+        self._make_btn(sec1, "启动五个", self.launch_game_five_times).grid(row=0, column=1, padx=2, pady=3, sticky='ew')
+        self._make_btn(sec1, "排列窗口", self.arrange_game_windows).grid(row=1, column=0, padx=2, pady=3, sticky='ew')
+        self.topmost_btn = self._make_btn(sec1, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
+        self.topmost_btn.grid(row=1, column=1, padx=2, pady=3, sticky='ew')
 
-        # 左：捉鬼轮数 [−] 数字 [+]
-        left = tk.Frame(cfg_line, bg=C_BG)
-        left.grid(row=0, column=0, sticky='w')
-        tk.Label(left, text="捉鬼轮数", fg=C_TEXT, bg=C_BG,
+        # ============ 分区 2：一条龙 ============
+        sec2 = self._make_section(main, "一条龙")
+        sec2.columnconfigure(0, weight=1)
+        sec2.columnconfigure(1, weight=1)
+        self._make_btn(sec2, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
+            row=0, column=0, padx=2, pady=3, sticky='ew')
+        self._midway_btn = self._make_btn(sec2, "中途继续", self._toggle_midway, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER)
+        self._midway_btn.grid(row=0, column=1, padx=2, pady=3, sticky='ew')
+
+        # 捉鬼轮数行
+        rounds_line = tk.Frame(sec2, bg=C_BG)
+        rounds_line.grid(row=1, column=0, columnspan=2, padx=2, pady=(6, 2), sticky='ew')
+        rounds_line.columnconfigure(0, weight=0)
+        tk.Label(rounds_line, text="捉鬼轮数", fg=C_TEXT, bg=C_BG,
                  font=("Microsoft YaHei", 10)).pack(side=tk.LEFT, padx=(2, 6))
-        self._make_btn(left, "−", self._dec_zhuogui_rounds,
-                       C_TASK, C_TASK_HOVER).pack(side=tk.LEFT, padx=2)
-        self.rounds_val_lbl = tk.Label(left, textvariable=self.zhuogui_rounds_var,
+        self._make_btn(rounds_line, "−", self._dec_zhuogui_rounds).pack(side=tk.LEFT, padx=2)
+        self.rounds_val_lbl = tk.Label(rounds_line, textvariable=self.zhuogui_rounds_var,
                                        fg=C_TEXT, bg=C_FRAME, width=3,
                                        font=("Microsoft YaHei", 11, "bold"))
         self.rounds_val_lbl.pack(side=tk.LEFT, padx=4, ipady=2)
-        self._make_btn(left, "＋", self._inc_zhuogui_rounds,
-                       C_TASK, C_TASK_HOVER).pack(side=tk.LEFT, padx=2)
+        self._make_btn(rounds_line, "＋", self._inc_zhuogui_rounds).pack(side=tk.LEFT, padx=2)
 
-        # 右：跳过师门开关
+        # 跳过师门行
         self.skip_shimen_check = tk.Checkbutton(
-            cfg_line, text="跳过师门", variable=self.skip_shimen_var,
-            command=self._save_gui_prefs,
+            sec2, text="跳过师门", variable=self.skip_shimen_var, command=self._save_gui_prefs,
             fg=C_TEXT, bg=C_BG, activebackground=C_BG, activeforeground=C_TEXT,
             selectcolor=C_BG, font=("Microsoft YaHei", 10, "bold"), highlightthickness=0,
             padx=4, pady=2)
-        self.skip_shimen_check.grid(row=0, column=1, sticky='e')
-        r += 1
+        self.skip_shimen_check.grid(row=2, column=0, columnspan=2, sticky='w', padx=6, pady=(2, 4))
 
-        # 一条龙 / 中途继续
-        self._make_btn(btn_frame, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
-            row=r, column=0, padx=2, pady=5, sticky='ew')
-        self._midway_btn = self._make_btn(btn_frame, "中途继续", self._toggle_midway, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER)
-        self._midway_btn.grid(row=r, column=1, padx=2, pady=5, sticky='ew')
-        r += 1
+        # ============ 分区 3：工具 ============
+        sec3 = self._make_section(main, "工具")
+        sec3.columnconfigure(0, weight=1)
+        sec3.columnconfigure(1, weight=1)
+        self._make_btn(sec3, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
+            row=0, column=0, padx=2, pady=3, sticky='ew')
+        half = tk.Frame(sec3, bg=C_BG)
+        half.grid(row=0, column=1, padx=2, pady=3, sticky='ew')
+        half.columnconfigure(0, weight=1)
+        half.columnconfigure(1, weight=1)
+        self._make_btn(half, "抓点", self.get_mouse_position_and_color).grid(row=0, column=0, padx=1, sticky='ew')
+        self._make_btn(half, "分辨率", self.get_window_resolution).grid(row=0, column=1, padx=1, sticky='ew')
+        self.stop_btn = self._make_btn(sec3, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
+        self.stop_btn.grid(row=1, column=0, columnspan=2, padx=2, pady=3, sticky='ew')
 
-        # 停止
-        self.stop_btn = self._make_btn(btn_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
-        self.stop_btn.grid(row=r, column=0, columnspan=2, padx=2, pady=5, sticky='ew')
+    def _make_section(self, parent, title):
+        """创建带标题的分区（黑白风格）：黑边框标题 + 白色内容区"""
+        sec = tk.LabelFrame(parent, text=title, fg=C_TEXT, bg=C_BG,
+                            font=("Microsoft YaHei", 10, "bold"),
+                            padx=6, pady=6, bd=1,
+                            highlightthickness=1, highlightbackground=C_BORDER,
+                            highlightcolor=C_BORDER, relief='solid')
+        sec.pack(fill=tk.X, pady=(4, 2))
+        return sec
 
     def _check_launcher(self):
         if not os.path.exists(self.game_launcher_path):
