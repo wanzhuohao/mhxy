@@ -45,14 +45,15 @@ class BorderedButton(tk.Frame):
     """带黑色边框的白色按钮：外层黑 Frame + 内层白 Button。
     对外暴露 btn 的 config/cget/bind/unbind，方便与原有按钮 API 兼容。"""
 
-    def __init__(self, master, text="", command=None, border=1):
+    def __init__(self, master, text="", command=None, border=1, compact=False):
         super().__init__(master, bg=C_BORDER, padx=border, pady=border)
+        inner_pady = 2 if compact else 11
         self._inner = tk.Button(
             self, text=text, command=command,
             font=("Microsoft YaHei", 9, "bold"),
             fg=C_TEXT, bg="white", activebackground="white",
             activeforeground=C_TEXT, relief='flat', bd=0,
-            cursor='hand2', padx=4, pady=11
+            cursor='hand2', padx=4, pady=inner_pady
         )
         self._inner.pack(fill=tk.BOTH, expand=True)
         self._border = border
@@ -157,7 +158,7 @@ class GameLauncherApp:
             cfg = self.cfg or {}
             w, h = cfg.get('width', 380), cfg.get('height', 460)
             # 高度下限：保证窗口能容纳当前分区布局，防止旧配置截断底部
-            h = max(h, 620)
+            h = max(h, 950)
             x, y = cfg.get('x', 1700), cfg.get('y', 200)
             return f"{w}x{h}+{x}+{y}"
         except Exception:
@@ -195,9 +196,9 @@ class GameLauncherApp:
 
     # ========== 按钮工厂 ==========
 
-    def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER):
+    def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER, compact=False):
         """创建带黑色边框的白色按钮（白底黑字 + 黑边框）"""
-        return BorderedButton(parent, text=text, command=command)
+        return BorderedButton(parent, text=text, command=command, compact=compact)
 
     # ========== UI 构建 ==========
 
@@ -220,6 +221,15 @@ class GameLauncherApp:
         self._make_btn(sec1, "排列窗口", self.arrange_game_windows).grid(row=1, column=0, padx=2, pady=3, sticky='ew')
         self.topmost_btn = self._make_btn(sec1, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
         self.topmost_btn.grid(row=1, column=1, padx=2, pady=3, sticky='ew')
+
+        # ============ 任务（单独执行单个任务） ============
+        sec_task = self._make_section(main, "任务")
+        sec_task.columnconfigure(0, weight=1)
+        sec_task.columnconfigure(1, weight=1)
+        for i, (name, text, *_r) in enumerate(self.TASK_DEFS):
+            row, col = i // 2, i % 2
+            self._make_btn(sec_task, text, lambda n=name: self.toggle_task(n),
+                           compact=True).grid(row=row, column=col, padx=2, pady=2, sticky='ew')
 
         # ============ 分区 2：一条龙 ============
         sec2 = self._make_section(main, "一条龙")
@@ -528,12 +538,12 @@ class GameLauncherApp:
         self._open_midway_picker()
 
     def _open_midway_picker(self):
-        """创建任务选择弹窗：点击任务按选中模式执行并关闭弹窗"""
+        """创建任务选择弹窗：点击某个任务即从该任务开始一条龙并关闭弹窗"""
         if getattr(self, '_midway_picker', None) and self._midway_picker.winfo_exists():
             self._midway_picker.lift()
             return
         win = tk.Toplevel(self.root)
-        win.title("选择任务")
+        win.title("从中途继续")
         win.configure(bg=C_BG)
         win.attributes('-topmost', True)
         win.resizable(False, False)
@@ -543,40 +553,19 @@ class GameLauncherApp:
         frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
         frame.columnconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
-        tk.Label(frame, text="选择任务", fg=C_TEXT, bg=C_BG,
-                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, columnspan=2, pady=(0, 4))
-
-        # 模式：单独执行 或 从中途继续一条龙
-        self.picker_mode_var = tk.StringVar(value=(self.cfg or {}).get('picker_mode', 'single'))
-        mode_line = tk.Frame(frame, bg=C_BG)
-        mode_line.grid(row=1, column=0, columnspan=2, pady=(0, 6))
-        def _mode_save(*_a):
-            self.cfg['picker_mode'] = self.picker_mode_var.get()
-            self._save_cfg()
-        tk.Radiobutton(mode_line, text="单独执行", variable=self.picker_mode_var, value='single',
-                       command=_mode_save, fg=C_TEXT, bg=C_BG, activebackground=C_BG,
-                       activeforeground=C_TEXT, selectcolor=C_BG,
-                       font=("Microsoft YaHei", 9), highlightthickness=0).pack(side=tk.LEFT, padx=(0, 10))
-        tk.Radiobutton(mode_line, text="从中途继续", variable=self.picker_mode_var, value='midway',
-                       command=_mode_save, fg=C_TEXT, bg=C_BG, activebackground=C_BG,
-                       activeforeground=C_TEXT, selectcolor=C_BG,
-                       font=("Microsoft YaHei", 9), highlightthickness=0).pack(side=tk.LEFT)
+        tk.Label(frame, text="选择从中途继续的任务", fg=C_TEXT, bg=C_BG,
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, columnspan=2, pady=(0, 6))
 
         def pick(name):
-            mode = self.picker_mode_var.get()
             win.destroy()
-            if mode == 'midway':
-                if name in self.task_stop_events and name != 'all_in_one':
-                    self.task_stop_events.pop(name, None)
-                self._start_all_in_one_from(name)
-            else:
-                # 单独执行本任务
-                self.toggle_task(name)
+            if name in self.task_stop_events and name != 'all_in_one':
+                self.task_stop_events.pop(name, None)
+            self._start_all_in_one_from(name)
 
         for i, (name, text, *_r) in enumerate(self.TASK_DEFS):
-            row, col = 2 + i // 2, i % 2
-            self._make_btn(frame, text, lambda n=name: pick(n)).grid(
-                row=row, column=col, padx=2, pady=5, sticky='ew')
+            row, col = 1 + i // 2, i % 2
+            self._make_btn(frame, text, lambda n=name: pick(n), compact=True).grid(
+                row=row, column=col, padx=2, pady=3, sticky='ew')
 
         # 内容构建完成后，用实际需求尺寸定位：居中于主窗口，且不超出主窗口/屏幕边界
         win.update_idletasks()
