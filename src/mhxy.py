@@ -524,16 +524,16 @@ class GameLauncherApp:
         messagebox.showinfo("窗口分辨率", f"{w}x{h}")
 
     def _toggle_midway(self):
-        """弹出中途继续的任务选择窗口"""
+        """弹出任务选择窗口（可单独执行或从中途继续一条龙）"""
         self._open_midway_picker()
 
     def _open_midway_picker(self):
-        """创建任务选择弹窗：点击某个任务即从该任务开始一条龙并关闭弹窗"""
+        """创建任务选择弹窗：点击任务按选中模式执行并关闭弹窗"""
         if getattr(self, '_midway_picker', None) and self._midway_picker.winfo_exists():
             self._midway_picker.lift()
             return
         win = tk.Toplevel(self.root)
-        win.title("从中途继续")
+        win.title("选择任务")
         win.configure(bg=C_BG)
         win.attributes('-topmost', True)
         win.resizable(False, False)
@@ -551,17 +551,38 @@ class GameLauncherApp:
         frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
         frame.columnconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
-        tk.Label(frame, text="选择从中途继续的任务", fg=C_TEXT, bg=C_BG,
-                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, columnspan=2, pady=(0, 6))
+        tk.Label(frame, text="选择任务", fg=C_TEXT, bg=C_BG,
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, columnspan=2, pady=(0, 4))
+
+        # 模式：单独执行 或 从中途继续一条龙
+        self.picker_mode_var = tk.StringVar(value=(self.cfg or {}).get('picker_mode', 'single'))
+        mode_line = tk.Frame(frame, bg=C_BG)
+        mode_line.grid(row=1, column=0, columnspan=2, pady=(0, 6))
+        def _mode_save(*_a):
+            self.cfg['picker_mode'] = self.picker_mode_var.get()
+            self._save_cfg()
+        tk.Radiobutton(mode_line, text="单独执行", variable=self.picker_mode_var, value='single',
+                       command=_mode_save, fg=C_TEXT, bg=C_BG, activebackground=C_BG,
+                       activeforeground=C_TEXT, selectcolor=C_BG,
+                       font=("Microsoft YaHei", 9), highlightthickness=0).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Radiobutton(mode_line, text="从中途继续", variable=self.picker_mode_var, value='midway',
+                       command=_mode_save, fg=C_TEXT, bg=C_BG, activebackground=C_BG,
+                       activeforeground=C_TEXT, selectcolor=C_BG,
+                       font=("Microsoft YaHei", 9), highlightthickness=0).pack(side=tk.LEFT)
 
         def pick(name):
+            mode = self.picker_mode_var.get()
             win.destroy()
-            if name in self.task_stop_events and name != 'all_in_one':
-                self.task_stop_events.pop(name, None)
-            self._start_all_in_one_from(name)
+            if mode == 'midway':
+                if name in self.task_stop_events and name != 'all_in_one':
+                    self.task_stop_events.pop(name, None)
+                self._start_all_in_one_from(name)
+            else:
+                # 单独执行本任务
+                self.toggle_task(name)
 
         for i, (name, text, *_r) in enumerate(self.TASK_DEFS):
-            row, col = 1 + i // 2, i % 2
+            row, col = 2 + i // 2, i % 2
             self._make_btn(frame, text, lambda n=name: pick(n)).grid(
                 row=row, column=col, padx=2, pady=5, sticky='ew')
         _ = _r
