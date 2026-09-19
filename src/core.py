@@ -69,6 +69,7 @@ TPL = {
     'duiwu':          _load('common/duiwu.bmp'),
     'qingli':         _load('common/qingli.bmp'),
     'panel_x':        _load('common/panel_x.bmp'),
+    'yaoqingrudui':   _load('common/yaoqingrudui.bmp'),
     'baoturenwu':     _load('baotu/baoturenwu.bmp'),
     'tingtingwufang': _load('baotu/tingtingwufang.bmp'),
     'renwu_baotu':    _load('baotu/renwu_baotu.bmp'),

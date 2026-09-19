@@ -74,19 +74,20 @@ def claim_double_points(stop_event):
     log("领取双倍点数完成")
 
 
-def zhuogui_start(stop_event: threading.Event, rounds=2):
-    """捉鬼：领取双倍 → 点击活动进入 → 点击去接受任务 → 等待完成 → 循环指定轮数
+def ling_shuang_start(stop_event: threading.Event):
+    """领双：逐窗口打开挂机面板领取双倍点数（独立按钮，不再并入捉鬼）"""
+    log("领双任务开始")
+    claim_double_points(stop_event)
+    log("领双任务完成")
 
-    完成图检测：逐秒检测 TPL['zhuogui_wancheng']，每10秒打印一次当前匹配度，
-    便于调整阈值。
+
+def zhuogui_start(stop_event: threading.Event, rounds=2):
+    """捉鬼：点击活动进入 → 点击去接受任务 → 等待完成 → 循环指定轮数
+
+    完成图检测：检测 TPL['zhuoguiqueding']。
+    注意：领取双倍已拆成独立任务 lingshuang，不再在捉鬼内自动执行。
     """
     log("捉鬼任务开始")
-
-    # 第0步：领取挂机双倍点数
-    log("── 领取挂机双倍点数 ──")
-    claim_double_points(stop_event)
-    if stop_event.is_set():
-        return
 
     # 固定取屏幕左上角的窗口1
     w1_rect = REGIONS[0]

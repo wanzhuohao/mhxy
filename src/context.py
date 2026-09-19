@@ -2,6 +2,10 @@
 
 import threading
 
+import win32gui
+import win32api
+import win32con
+
 _thread_ctx = threading.local()
 _window_locks = {}
 _window_locks_lock = threading.Lock()
@@ -54,3 +58,28 @@ def safe_double_click(x, y):
             pyautogui.doubleClick(x, y)
     else:
         pyautogui.doubleClick(x, y)
+
+
+def activate_window(hwnd, rect=None):
+    """把窗口激活到前台，多种方案兜底，失败不抛异常（返回是否成功）。
+
+    Windows 有"前台窗口激活限制"：当脚本进程不是前台进程、或屏幕被锁/窗口被
+    覆盖时，SetForegroundWindow 会静默失败，直接调用会抛 pywintypes.error
+    (0, 'SetForegroundWindow', ...)，导致任务在第一行就中止。这里先用标准调用，
+    失败则模拟按一次 Alt 键解除前台锁定再重试；仍失败就放弃并返回 False，
+    由调用方决定如何继续（任务本身靠窗口矩形坐标 + safe_click 定位，不强制置前）。
+    """
+    try:
+        win32gui.SetForegroundWindow(hwnd)
+        return True
+    except Exception:
+        pass
+    try:
+        # 模拟按一次 Alt 键解除前台锁定限制，再重试
+        win32api.keybd_event(0x12, 0, 0, 0)
+        win32api.keybd_event(0x12, 0, win32con.KEYEVENTF_KEYUP, 0)
+        win32gui.SetForegroundWindow(hwnd)
+        return True
+    except Exception:
+        pass
+    return False

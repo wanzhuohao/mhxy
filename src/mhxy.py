@@ -63,20 +63,21 @@ class GameLauncherApp:
 
         self.game_launcher_path = r"C:\Program Files\梦幻西游时空\MyLauncher_x64r.exe"
 
-        # 任务配置：(名称, 显示文本, 行, 列)
+        # 任务配置：(名称, 显示文本, 行, 列)。每行 3 个按钮。
         self.TASK_DEFS = [
             ('zudui',     '组队',     0, 0),
             ('fuben',     '副本',     0, 1),
-            ('zhuogui',   '捉鬼',     1, 0),
-            ('jiesan',    '解散',     1, 1),
-            ('shimen',    '师门',     2, 0),
-            ('baotu',     '宝图',     2, 1),
-            ('mijing',    '秘境',     3, 0),
-            ('watu',      '挖图',     3, 1),
-            ('yabiao',    '押镖',     4, 0),
-            ('sanjie',    '三界',     4, 1),
-            ('keju',      '科举',     5, 0),
-            ('lingjiang', '领奖',     5, 1),
+            ('zhuogui',   '捉鬼',     0, 2),
+            ('jiesan',    '解散',     1, 0),
+            ('shimen',    '师门',     1, 1),
+            ('baotu',     '宝图',     1, 2),
+            ('mijing',    '秘境',     2, 0),
+            ('watu',      '挖图',     2, 1),
+            ('yabiao',    '押镖',     2, 2),
+            ('sanjie',    '三界',     3, 0),
+            ('keju',      '科举',     3, 1),
+            ('lingjiang', '领奖',     3, 2),
+            ('lingshuang', '领双',    4, 0),
         ]
 
         self.task_running = {}
@@ -138,27 +139,15 @@ class GameLauncherApp:
         self._save_geometry()
         self.root.destroy()
 
-    def _toggle_topmost(self):
-        """切换窗口置顶"""
-        current = self.root.attributes('-topmost') in (True, 'true', 1)
-        self.root.attributes('-topmost', not current)
-        if current:
-            self.topmost_btn.config(text="置顶")
-            log("取消置顶")
-        else:
-            self.topmost_btn.config(text="取消置顶")
-            log("窗口已置顶")
-
-    # ========== 按钮工厂 ==========
-
-    def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER, compact=False):
-        """创建统一风格按钮"""
+    def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER,
+                  font_size=9, pad_x=6, pad_y=4):
+        """创建统一风格按钮；font_size/pad_x/pad_y 用于放大个别按钮（如弹窗）"""
         btn = tk.Button(
             parent, text=text, command=command,
-            font=("Microsoft YaHei", 9, "bold"),
+            font=("Microsoft YaHei", font_size, "bold"),
             fg=C_TEXT, bg=color, activebackground=hover,
             activeforeground=C_TEXT, relief='flat', bd=0,
-            cursor='hand2', padx=6, pady=4
+            cursor='hand2', padx=pad_x, pady=pad_y
         )
         btn.bind('<Enter>', lambda e, b=btn, h=hover: b.config(bg=h))
         btn.bind('<Leave>', lambda e, b=btn, c=color: b.config(bg=c))
@@ -176,11 +165,12 @@ class GameLauncherApp:
         self.zhuogui_rounds_var = tk.IntVar(value=int(cfg.get('zhuogui_rounds', 5)))
         self.skip_shimen_var = tk.BooleanVar(value=cfg.get('skip_shimen', True))
 
-        # 统一 2 列 grid
+        # 统一 3 列 grid（任务按钮一排 3 个）
         btn_frame = tk.Frame(main, bg=C_BG)
         btn_frame.pack(fill=tk.X, pady=(0, 2))
         btn_frame.columnconfigure(0, weight=1)
         btn_frame.columnconfigure(1, weight=1)
+        btn_frame.columnconfigure(2, weight=1)
 
         r = 0
 
@@ -192,8 +182,8 @@ class GameLauncherApp:
         r += 1
         self._make_btn(btn_frame, "排列窗口", self.arrange_game_windows).grid(
             row=r, column=0, padx=2, pady=2, sticky='ew')
-        self.topmost_btn = self._make_btn(btn_frame, "置顶", self._toggle_topmost, C_BTN_SPECIAL)
-        self.topmost_btn.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
+        self._make_btn(btn_frame, "关闭游戏", self.close_all_games, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
+            row=r, column=1, padx=2, pady=2, sticky='ew')
         r += 1
 
         # 无限鬼 / 抓点+分辨率（半宽）
@@ -209,18 +199,22 @@ class GameLauncherApp:
             row=0, column=1, padx=1, sticky='ew')
         r += 1
 
-        # 任务按钮（橙色）
+        # 任务按钮（橙色），每行 3 个；最后一个单独占整行
         self.task_buttons = {}
-        for name, text, t_row, t_col in self.TASK_DEFS:
+        last = len(self.TASK_DEFS) - 1
+        for i, (name, text, t_row, t_col) in enumerate(self.TASK_DEFS):
             btn = self._make_btn(btn_frame, text, lambda n=name: self.toggle_task(n), C_TASK, C_TASK_HOVER)
-            btn.grid(row=r + t_row, column=t_col, padx=2, pady=2, sticky='ew')
+            if i == last:
+                btn.grid(row=r + t_row, column=0, columnspan=3, padx=2, pady=2, sticky='ew')
+            else:
+                btn.grid(row=r + t_row, column=t_col, padx=2, pady=2, sticky='ew')
             self.task_buttons[name] = btn
             self.task_running[name] = False
-        r += 6
+        r += 5
 
         # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
         cfg_line = tk.Frame(btn_frame, bg=C_BG)
-        cfg_line.grid(row=r, column=0, columnspan=2, padx=2, pady=(3, 2), sticky='ew')
+        cfg_line.grid(row=r, column=0, columnspan=3, padx=2, pady=(3, 2), sticky='ew')
         cfg_line.columnconfigure(0, weight=1)
         cfg_line.columnconfigure(1, weight=1)
 
@@ -255,9 +249,39 @@ class GameLauncherApp:
         self._midway_btn.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
         r += 1
 
-        # 停止
+        # 停止 / 日志（控制台显隐切换）
         self.stop_btn = self._make_btn(btn_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
-        self.stop_btn.grid(row=r, column=0, columnspan=2, padx=2, pady=2, sticky='ew')
+        self.stop_btn.grid(row=r, column=0, padx=2, pady=2, sticky='ew')
+        self.log_btn = self._make_btn(btn_frame, "打开日志", self._toggle_console, C_BTN_SPECIAL)
+        self.log_btn.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
+
+    def _console_hwnd(self):
+        """取当前进程控制台窗口句柄，无则返回 0"""
+        try:
+            import ctypes
+            return ctypes.windll.kernel32.GetConsoleWindow()
+        except Exception:
+            return 0
+
+    def _toggle_console(self):
+        """打开/关闭控制台日志窗口（仅切换显示隐藏）"""
+        hwnd = self._console_hwnd()
+        if not hwnd:
+            log("未找到控制台窗口", "WARN")
+            return
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            if user32.IsWindowVisible(hwnd):
+                user32.ShowWindow(hwnd, 0)  # SW_HIDE
+                self.log_btn.config(text="打开日志")
+                log("控制台已隐藏")
+            else:
+                user32.ShowWindow(hwnd, 5)  # SW_SHOW
+                self.log_btn.config(text="关闭日志")
+                log("控制台已显示")
+        except Exception as e:
+            log(f"切换控制台出错: {e}", "ERR")
 
     def _check_launcher(self):
         if not os.path.exists(self.game_launcher_path):
@@ -353,7 +377,8 @@ class GameLauncherApp:
         windows.sort(key=lambda w: (w[1][1], w[1][0]))
         first_hwnd, first_rect = windows[0]
 
-        win32gui.SetForegroundWindow(first_hwnd)
+        if not context.activate_window(first_hwnd, first_rect):
+            log("队长窗口激活到前台失败，继续尝试", "WARN")
         time.sleep(1)
 
         self._click_at(first_rect, 18 * 1.5, 313 * 1.5)
@@ -367,13 +392,11 @@ class GameLauncherApp:
             time.sleep(0.5)
 
         for i, (hwnd, rect) in enumerate(windows[1:5], 2):
-            try:
-                win32gui.SetForegroundWindow(hwnd)
-                time.sleep(0.5)
-                self._click_at(rect, 300, 350, rand_x=10, rand_y=5 if i != 2 else 0)
-                time.sleep(0.5)
-            except Exception as e:
-                log(f"处理窗口{i}出错: {e}", "ERR")
+            if not context.activate_window(hwnd, rect):
+                log(f"窗口{i}激活到前台失败，继续尝试", "WARN")
+            time.sleep(0.5)
+            self._click_at(rect, 300, 350, rand_x=10, rand_y=5 if i != 2 else 0)
+            time.sleep(0.5)
         # 最后点击 (802, 136)
         context.safe_click(802 + random.randint(-3, 3), 136 + random.randint(-3, 3))
         log("组队完成")
@@ -469,7 +492,10 @@ class GameLauncherApp:
         """单个窗口的任务线程：设置上下文，执行任务"""
         try:
             context.set_window_context(hwnd, rect)
-            win32gui.SetForegroundWindow(hwnd)
+            if not context.activate_window(hwnd, rect):
+                # 激活失败（前台锁定限制）不中止任务：继续用矩形坐标点击，
+                # 后续识别不到按钮时任务自身会重试/跳过
+                log("窗口激活到前台失败，继续尝试执行", "WARN")
             time.sleep(0.5)
             if rounds is not None:
                 func(stop_event, rounds=rounds)
@@ -581,8 +607,10 @@ class GameLauncherApp:
 
         for i, (name, text, *_r) in enumerate(self.TASK_DEFS):
             row, col = 1 + i // 2, i % 2
-            self._make_btn(frame, text, lambda n=name: pick(n), compact=True).grid(
-                row=row, column=col, padx=2, pady=3, sticky='ew')
+            # 加大字号与内边距，按钮更好点击，弹窗随之变大
+            self._make_btn(frame, text, lambda n=name: pick(n),
+                           font_size=12, pad_x=20, pad_y=12).grid(
+                row=row, column=col, padx=4, pady=5, sticky='ew')
 
         # 内容构建完成后，用实际需求尺寸定位：居中于主窗口，且不超出主窗口/屏幕边界
         win.update_idletasks()
@@ -664,6 +692,7 @@ class GameLauncherApp:
         ('zudui',     '组队',     None, 'func'),
         ('fuben',     '副本',     None, 'func'),
         ('fuben',     '副本',     None, 'func'),
+        ('lingshuang', '领双',    None,   'func'),
         ('zhuogui',   '捉鬼',     None,   'func'),   # 轮数运行时从配置/控件读取
         ('jiesan',    '解散',     None, 'func'),
         ('shimen',    '师门',     None, 'func'),
@@ -797,6 +826,8 @@ class GameLauncherApp:
             self.task_running[name] = False
         self.task_windows.clear()
         self.task_stop_events.clear()
+        # 停止后立即恢复所有任务按钮原色（否则颜色会停留在执行中/高亮/已完成状态）
+        self._reset_all_task_btns()
         log(f"停止完成，已停止{stopped}个任务")
 
     def _start_button_update_timer(self):
@@ -821,31 +852,14 @@ class GameLauncherApp:
 
 
 if __name__ == "__main__":
-    # 将控制台窗口移到屏幕右下角
+    # 启动时隐藏控制台日志窗口（不再显示黑色命令行）
     try:
         import ctypes
-        SWP_NOACTIVATE = 0x0010
-        SWP_NOZORDER = 0x0004
-        SWP_SHOWWINDOW = 0x0040
-        user32 = ctypes.windll.user32
         kernel32 = ctypes.windll.kernel32
-
-        # 获取控制台窗口句柄
+        user32 = ctypes.windll.user32
         HWND = kernel32.GetConsoleWindow()
         if HWND:
-            user32.SetWindowPos(HWND, 0,
-                0, 0,   # x, y - 先移动到目标
-                0, 0,   # w, h - 忽略宽高
-                SWP_NOZORDER | SWP_NOSIZE)
-            # 获取屏幕尺寸
-            SW = user32.GetSystemMetrics(0)   # SM_CXSCREEN
-            SH = user32.GetSystemMetrics(1)   # SM_CYSCREEN
-            # 窗口移到右下角（控制台窗口通常 80x30 字符，约 640x450）
-            console_w, console_h = 640, 450
-            x = SW - console_w - 10
-            y = SH - console_h - 10
-            user32.SetWindowPos(HWND, 0, x, y, 0, 0,
-                SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW)
+            user32.ShowWindow(HWND, 0)  # SW_HIDE
     except Exception:
         pass
 
