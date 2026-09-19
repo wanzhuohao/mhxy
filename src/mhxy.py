@@ -174,29 +174,24 @@ class GameLauncherApp:
 
         r = 0
 
-        # 窗口管理
+        # 窗口管理 + 特殊操作（一排 3 个）
         self._make_btn(btn_frame, "启动一个", self.launch_game_once).grid(
             row=r, column=0, padx=2, pady=2, sticky='ew')
         self._make_btn(btn_frame, "启动五个", self.launch_game_five_times).grid(
             row=r, column=1, padx=2, pady=2, sticky='ew')
-        r += 1
         self._make_btn(btn_frame, "排列窗口", self.arrange_game_windows).grid(
-            row=r, column=0, padx=2, pady=2, sticky='ew')
-        self._make_btn(btn_frame, "关闭游戏", self.close_all_games, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
-            row=r, column=1, padx=2, pady=2, sticky='ew')
+            row=r, column=2, padx=2, pady=2, sticky='ew')
         r += 1
-
-        # 无限鬼 / 抓点+分辨率（半宽）
         self._make_btn(btn_frame, "无限鬼", lambda: self.toggle_task('zhuogui', 99), C_BTN_SPECIAL).grid(
             row=r, column=0, padx=2, pady=2, sticky='ew')
-        half_frame = tk.Frame(btn_frame, bg=C_BG)
-        half_frame.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
-        half_frame.columnconfigure(0, weight=1)
-        half_frame.columnconfigure(1, weight=1)
-        self._make_btn(half_frame, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
-            row=0, column=0, padx=1, sticky='ew')
-        self._make_btn(half_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
-            row=0, column=1, padx=1, sticky='ew')
+        self._make_btn(btn_frame, "抓点", self.get_mouse_position_and_color, C_BTN_SPECIAL).grid(
+            row=r, column=1, padx=2, pady=2, sticky='ew')
+        self._make_btn(btn_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
+            row=r, column=2, padx=2, pady=2, sticky='ew')
+        r += 1
+        # 关闭游戏：单独整行，红色警示
+        self._make_btn(btn_frame, "关闭游戏", self.close_all_games, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
+            row=r, column=0, columnspan=3, padx=2, pady=2, sticky='ew')
         r += 1
 
         # 任务按钮（橙色），每行 3 个；最后一个单独占整行
@@ -242,18 +237,18 @@ class GameLauncherApp:
         self.skip_shimen_check.grid(row=0, column=1, sticky='e')
         r += 1
 
-        # 一条龙 / 中途继续
+        # 一条龙 / 中途继续 / 打开日志
         self._make_btn(btn_frame, "一条龙", self.all_in_one, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER).grid(
             row=r, column=0, padx=2, pady=2, sticky='ew')
         self._midway_btn = self._make_btn(btn_frame, "中途继续", self._toggle_midway, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER)
         self._midway_btn.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
+        self.log_btn = self._make_btn(btn_frame, "打开日志", self._toggle_console, C_BTN_SPECIAL)
+        self.log_btn.grid(row=r, column=2, padx=2, pady=2, sticky='ew')
         r += 1
 
-        # 停止 / 日志（控制台显隐切换）
+        # 停止：单独整行，红色警示
         self.stop_btn = self._make_btn(btn_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
-        self.stop_btn.grid(row=r, column=0, padx=2, pady=2, sticky='ew')
-        self.log_btn = self._make_btn(btn_frame, "打开日志", self._toggle_console, C_BTN_SPECIAL)
-        self.log_btn.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
+        self.stop_btn.grid(row=r, column=0, columnspan=3, padx=2, pady=2, sticky='ew')
 
     def _console_hwnd(self):
         """取当前进程控制台窗口句柄，无则返回 0"""
