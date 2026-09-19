@@ -4,6 +4,17 @@
 
 - （暂无）
 
+## 2026-09-19 组队移植（来自 mhxy_code 参考稿）
+
+- GUI：去掉置顶按钮，改为"关闭游戏"；修停止后按钮颜色不恢复；中途继续弹窗按钮放大
+- 组队任务改走 mhxy_code 逻辑：先拖拽好友列表露出好友 → 图片识别"邀请入队"(yaoqingrudui) 并缓存位置 → 结束用 panel_x 识别关闭弹出面板
+- 复制模板 common/yaoqingrudui.bmp 并注册到 core.TPL
+- 捉鬼与领双拆成 2 个独立按钮：新增 lingshuang 任务（仅领双），捉鬼不再自动领双
+- 一条龙加入"领双"步骤（置于捉鬼之前，先领双再捉鬼）
+- 启动时隐藏控制台日志窗口（不再显示黑色命令行）
+- GUI 新增日志弹窗：底部"打开日志/关闭日志"切换按钮，core.log 实时滚动展示（线程安全调度到主线程）
+- 修复前台激活报错中止任务：_run_single_task / create_team 改用 context.activate_window（try/except + Alt 键兜底），避免 SetForegroundWindow 因 Windows 前台窗口激活限制抛错导致任务退出
+
 ## 2026-09-14 代码盘点 + 稳定性优化
 
 - 挖图双击改走窗口点击锁（新增 context.safe_double_click）
