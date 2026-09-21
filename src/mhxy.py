@@ -45,6 +45,7 @@ class GameLauncherApp:
 
     # ========== 统一任务顺序源（按钮 / 一条龙 / 中途继续共用，只在此处维护顺序） ==========
     _TASK_ORDER = [
+        ('guagua',    '刮刮乐'),
         ('zudui',     '组队'),
         ('fuben',     '副本'),
         ('lingshuang','领双'),
@@ -58,7 +59,6 @@ class GameLauncherApp:
         ('sanjie',    '三界'),
         ('keju',      '科举'),
         ('lingjiang', '领奖'),
-        ('guagua',    '刮刮乐'),
         ('bangpai',   '帮派'),
         ('shiyonggongju', '打工'),
         ('maidongxi', '出售'),
