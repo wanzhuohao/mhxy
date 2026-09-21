@@ -43,6 +43,28 @@ C_TITLE_BG = "#0c0c1d"      # 标题栏（深夜）
 class GameLauncherApp:
     CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "window.json")
 
+    # ========== 统一任务顺序源（按钮 / 一条龙 / 中途继续共用，只在此处维护顺序） ==========
+    _TASK_ORDER = [
+        ('zudui',     '组队'),
+        ('fuben',     '副本'),
+        ('lingshuang','领双'),
+        ('zhuogui',   '捉鬼'),
+        ('jiesan',    '解散'),
+        ('shimen',    '师门'),
+        ('baotu',     '宝图'),
+        ('mijing',    '秘境'),
+        ('watu',      '挖图'),
+        ('yabiao',    '押镖'),
+        ('sanjie',    '三界'),
+        ('keju',      '科举'),
+        ('lingjiang', '领奖'),
+        ('guagua',    '刮刮乐'),
+        ('bangpai',   '帮派'),
+        ('shiyonggongju', '打工'),
+        ('maidongxi', '出售'),
+        ('huijia',    '回家'),
+    ]
+
     def __init__(self, root):
         self.root = root
         self.root.title("梦幻助手")
@@ -63,21 +85,10 @@ class GameLauncherApp:
 
         self.game_launcher_path = r"C:\Program Files\梦幻西游时空\MyLauncher_x64r.exe"
 
-        # 任务配置：(名称, 显示文本, 行, 列)。每行 3 个按钮。
+        # 任务配置：按 _TASK_ORDER 顺序每行 3 个自动排布 (名称, 显示文本, 行, 列)
         self.TASK_DEFS = [
-            ('zudui',     '组队',     0, 0),
-            ('fuben',     '副本',     0, 1),
-            ('zhuogui',   '捉鬼',     0, 2),
-            ('jiesan',    '解散',     1, 0),
-            ('shimen',    '师门',     1, 1),
-            ('baotu',     '宝图',     1, 2),
-            ('mijing',    '秘境',     2, 0),
-            ('watu',      '挖图',     2, 1),
-            ('yabiao',    '押镖',     2, 2),
-            ('sanjie',    '三界',     3, 0),
-            ('keju',      '科举',     3, 1),
-            ('lingjiang', '领奖',     3, 2),
-            ('lingshuang', '领双',    4, 0),
+            (name, text, i // 3, i % 3)
+            for i, (name, text) in enumerate(self._TASK_ORDER)
         ]
 
         self.task_running = {}
@@ -112,14 +123,14 @@ class GameLauncherApp:
         """从 self.cfg 读取上次的窗口位置和大小"""
         try:
             cfg = self.cfg or {}
-            w, h = cfg.get('width', 380), cfg.get('height', 460)
+            w, h = cfg.get('width', 380), cfg.get('height', 520)
             # 高度下限：保证窗口能容纳当前分区布局，防止旧配置截断底部
-            h = max(h, 460)
+            h = max(h, 520)
             x, y = cfg.get('x', 1700), cfg.get('y', 200)
             return f"{w}x{h}+{x}+{y}"
         except Exception:
             pass
-        return "380x460+1700+200"
+        return "380x520+1700+200"
 
     def _save_geometry(self):
         """保存当前窗口位置和大小到配置文件"""
@@ -189,23 +200,16 @@ class GameLauncherApp:
         self._make_btn(btn_frame, "分辨率", self.get_window_resolution, C_BTN_SPECIAL).grid(
             row=r, column=2, padx=2, pady=2, sticky='ew')
         r += 1
-        # 关闭游戏：单独整行，红色警示
-        self._make_btn(btn_frame, "关闭游戏", self.close_all_games, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
-            row=r, column=0, columnspan=3, padx=2, pady=2, sticky='ew')
-        r += 1
 
-        # 任务按钮（橙色），每行 3 个；最后一个单独占整行
+        # 任务按钮（橙色），每行 3 个。所有按钮统一单列宽度（含领奖），
+        # 后续要新增按钮直接按 (row, col) 追加到 TASK_DEFS 即可，无需改动布局。
         self.task_buttons = {}
-        last = len(self.TASK_DEFS) - 1
-        for i, (name, text, t_row, t_col) in enumerate(self.TASK_DEFS):
+        for _, (name, text, t_row, t_col) in enumerate(self.TASK_DEFS):
             btn = self._make_btn(btn_frame, text, lambda n=name: self.toggle_task(n), C_TASK, C_TASK_HOVER)
-            if i == last:
-                btn.grid(row=r + t_row, column=0, columnspan=3, padx=2, pady=2, sticky='ew')
-            else:
-                btn.grid(row=r + t_row, column=t_col, padx=2, pady=2, sticky='ew')
+            btn.grid(row=r + t_row, column=t_col, padx=2, pady=2, sticky='ew')
             self.task_buttons[name] = btn
             self.task_running[name] = False
-        r += 5
+        r += 6
 
         # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
         cfg_line = tk.Frame(btn_frame, bg=C_BG)
@@ -246,9 +250,18 @@ class GameLauncherApp:
         self.log_btn.grid(row=r, column=2, padx=2, pady=2, sticky='ew')
         r += 1
 
-        # 停止：单独整行，红色警示
-        self.stop_btn = self._make_btn(btn_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
-        self.stop_btn.grid(row=r, column=0, columnspan=3, padx=2, pady=2, sticky='ew')
+        # 停止 / 关闭游戏（同一排，停止在左）。
+        # 用整行容器占满 3 列、内部等比拆分，使该排总宽与其他 3 按钮排一致（右侧不再留空）；
+        # 日后要在此行追加按钮，继续在容器内加列即可，无需改动外层布局。
+        bottom_frame = tk.Frame(btn_frame, bg=C_BG)
+        bottom_frame.grid(row=r, column=0, columnspan=3, padx=0, pady=2, sticky='ew')
+        # uniform 使两列严格等宽：停止/关闭游戏各占半行，合计与上面 3 按钮排同宽
+        bottom_frame.columnconfigure(0, weight=1, uniform='bottom_row')
+        bottom_frame.columnconfigure(1, weight=1, uniform='bottom_row')
+        self.stop_btn = self._make_btn(bottom_frame, "停止", self.stop_all_tasks, C_BTN_STOP, C_BTN_STOP_HOVER)
+        self.stop_btn.grid(row=0, column=0, padx=2, pady=0, sticky='ew')
+        self._make_btn(bottom_frame, "关闭游戏", self.close_all_games, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
+            row=0, column=1, padx=2, pady=0, sticky='ew')
 
     def _console_hwnd(self):
         """取当前进程控制台窗口句柄，无则返回 0"""
@@ -435,31 +448,42 @@ class GameLauncherApp:
     # ========== 任务调度 ==========
 
     def toggle_task(self, name, rounds=None):
-        """启动任务；若该任务在运行则停止（rounds 可指定轮数）"""
+        """启动任务；单任务互斥 + 双击防重复（rounds 可指定轮数）。
+
+        一次只跑一个手动任务：启动新任务前自动停止其它任务；
+        同一任务已在运行时再次点击直接忽略，避免误触反复开关。
+        手动单独跑的师门不受「跳过师门」影响（跳过仅在一一条龙生效）。
+        """
         btn = self.task_buttons.get(name)
         if btn:
             btn.config(state=tk.DISABLED)
             self.root.after(300, lambda: btn.config(state=tk.NORMAL))
 
+        # 双击防重复：同一任务已运行，忽略本次点击
         if self.task_running.get(name):
-            # 停止
-            stop_event = self.task_stop_events.get(name)
-            if stop_event:
-                stop_event.set()
-            self.task_running[name] = False
-            self.task_windows.pop(name, None)
-            self._set_btn_idle(name)
-            log(f"停止{name}")
-        else:
-            # 启动
-            self.task_running[name] = True
-            stop_event = threading.Event()
-            self.task_stop_events[name] = stop_event
-            func = TASK_FUNCS.get(name)
-            if func:
-                self._set_btn_running(name)
-                threading.Thread(target=self._dispatch_task, args=(name, func, stop_event, rounds), daemon=True).start()
-            log(f"启动{name}")
+            log(f"{name} 正在运行中，请勿重复点击（需要时可用『停止』结束）", "WARN")
+            return
+
+        # 互斥：一次只跑一个手动任务，先把其它正在运行的任务停掉
+        for other, running in list(self.task_running.items()):
+            if other != name and running:
+                ev = self.task_stop_events.get(other)
+                if ev:
+                    ev.set()
+                self.task_running[other] = False
+                self.task_windows.pop(other, None)
+                self._set_btn_idle(other)
+                log(f"停止{other}（开启{name}）")
+
+        # 启动
+        self.task_running[name] = True
+        stop_event = threading.Event()
+        self.task_stop_events[name] = stop_event
+        func = TASK_FUNCS.get(name)
+        if func:
+            self._set_btn_running(name)
+            threading.Thread(target=self._dispatch_task, args=(name, func, stop_event, rounds), daemon=True).start()
+        log(f"启动{name}")
 
     def _dispatch_task(self, name, func, stop_event, rounds=None):
         """根据任务类型调度。当前所有任务均为"组队型/全屏截图型"：
@@ -591,8 +615,9 @@ class GameLauncherApp:
         frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
         frame.columnconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(2, weight=1)
         tk.Label(frame, text="选择从中途继续的任务", fg=C_TEXT, bg=C_BG,
-                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, columnspan=2, pady=(0, 6))
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=0, column=0, columnspan=3, pady=(0, 6))
 
         def pick(name):
             win.destroy()
@@ -601,7 +626,7 @@ class GameLauncherApp:
             self._start_all_in_one_from(name)
 
         for i, (name, text, *_r) in enumerate(self.TASK_DEFS):
-            row, col = 1 + i // 2, i % 2
+            row, col = 1 + i // 3, i % 3
             # 加大字号与内边距，按钮更好点击，弹窗随之变大
             self._make_btn(frame, text, lambda n=name: pick(n),
                            font_size=12, pad_x=20, pad_y=12).grid(
@@ -682,22 +707,11 @@ class GameLauncherApp:
         self.task_stop_events['all_in_one'] = stop_event
         threading.Thread(target=self._all_in_one_thread, args=(windows, stop_event), daemon=True).start()
 
-    # 一条龙步骤顺序：(任务名, 显示名, 轮数, 类型)
+    # 一条龙步骤顺序：由 _TASK_ORDER 派生（副本跑两次）。改顺序只改 _TASK_ORDER 即可。
     _ALL_IN_ONE_STEPS = [
-        ('zudui',     '组队',     None, 'func'),
-        ('fuben',     '副本',     None, 'func'),
-        ('fuben',     '副本',     None, 'func'),
-        ('lingshuang', '领双',    None,   'func'),
-        ('zhuogui',   '捉鬼',     None,   'func'),   # 轮数运行时从配置/控件读取
-        ('jiesan',    '解散',     None, 'func'),
-        ('shimen',    '师门',     None, 'func'),
-        ('baotu',     '宝图',     None, 'func'),
-        ('mijing',    '秘境',     None, 'func'),
-        ('watu',      '挖图',     None, 'func'),
-        ('yabiao',    '押镖',     None, 'func'),
-        ('sanjie',    '三界',     None, 'func'),
-        ('keju',      '科举',     None, 'func'),
-        ('lingjiang', '领奖',     None, 'func'),
+        (name, text, None, 'func')
+        for name, text in _TASK_ORDER
+        for _ in (range(2) if name == 'fuben' else range(1))
     ]
 
     def _all_in_one_thread(self, windows, stop_event, start_from=None):
@@ -752,9 +766,6 @@ class GameLauncherApp:
             self.root.after(0, lambda n=task_name: self._set_btn_done(n))
             last_task = task_name
 
-        # 领取奖励
-        self.claim_rewards(windows, stop_event)
-
         log("一条龙任务完成")
         notify.send_feishu_msg("✅ 一条龙任务完成")
         # 重置副本进入按钮计数
@@ -764,52 +775,6 @@ class GameLauncherApp:
         self.task_stop_events.pop('all_in_one', None)
         self.root.after(0, self._reset_all_task_btns)
         log("一条龙全部完成")
-
-    def claim_rewards(self, windows, stop_event=None):
-        """领取奖励"""
-        try:
-            if stop_event and stop_event.is_set():
-                return
-            log("等待5秒后领取奖励...")
-            time.sleep(5)
-            if stop_event and stop_event.is_set():
-                return
-            log("── 领取奖励 ──")
-            import core
-            # 检查活动按钮是否存在
-            shot = core._screenshot_gray(full=True)
-            found_activity = False
-            for hwnd, rect in windows[:5]:
-                if core._match_in_region(shot, core.TPL['huodong'], rect):
-                    found_activity = True
-                    break
-            if not found_activity:
-                log("领取奖励：未找到活动按钮，跳过")
-                return
-
-            # 找活动按钮并点击
-            for hwnd, rect in windows[:5]:
-                r = core._match_in_region(shot, core.TPL['huodong'], rect)
-                if r:
-                    context.safe_click(r[0], r[1])
-                    log(f"窗口{windows.index((hwnd,rect))+1} 点击活动")
-                    time.sleep(0.3)
-            time.sleep(3)
-
-            # 每个窗口5个奖励按钮，按轮次点击（先5个窗口的按钮1，再按钮2...）
-            reward_xs = [299, 405, 526, 640, 745]
-            reward_y = 500
-            for rx in reward_xs:
-                for i, (hwnd, rect) in enumerate(windows[:5]):
-                    ox, oy = rect[0], rect[1]
-                    x = ox + rx + random.randint(-3, 3)
-                    y = oy + reward_y + random.randint(-3, 3)
-                    context.safe_click(x, y)
-                    log(f"窗口{i+1} 领取奖励 ({x},{y})")
-                    time.sleep(0.3)
-                time.sleep(0.5)
-        except Exception as e:
-            log(f"领取奖励出错: {e}", "ERR")
 
     def stop_all_tasks(self):
         """停止所有任务"""

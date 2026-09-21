@@ -13,10 +13,16 @@ from tasks.zudui import zudui_start
 from tasks.sanjie import sanjie_start
 from tasks.keju import keju_start
 from tasks.lingjiang import lingjiang_start
+from tasks.guagua import guagua_start
+from tasks.bangpai import bangpai_start
+from tasks.huijia import huijia_start
+from tasks.maidongxi import maidongxi_start
+from tasks.shiyonggongju import shiyonggongju_start
 
 # 组队型任务：全屏截图模式，只执行一次（已包含所有窗口的逻辑）
 TEAM_TASKS = {'fuben', 'zhuogui', 'lingshuang', 'shimen', 'baotu', 'watu', 'jiesan', 'zudui', 
-              'lingjiang', 'mijing', 'yabiao', 'dati', 'sanjie', 'keju'}
+              'lingjiang', 'mijing', 'yabiao', 'dati', 'sanjie', 'keju', 'guagua', 'bangpai', 'huijia',
+              'maidongxi', 'shiyonggongju'}
 
 TASK_FUNCS = {
     'shimen': shimen_start,
@@ -33,4 +39,9 @@ TASK_FUNCS = {
     'sanjie': sanjie_start,
     'keju': keju_start,
     'lingjiang': lingjiang_start,
+    'guagua': guagua_start,
+    'bangpai': bangpai_start,
+    'huijia': huijia_start,
+    'maidongxi': maidongxi_start,
+    'shiyonggongju': shiyonggongju_start,
 }
