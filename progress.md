@@ -4,6 +4,10 @@
 
 - （暂无）
 
+## 2026-09-21 关闭游戏自动点确认框确定
+
+- close_all_games 补全（参考 mhxy_code close_game_windows）：先 stop_all_tasks 停任务 → 发 WM_CLOSE → 等待确认框弹出后逐窗口点"确定"(相对坐标 582,489)；改为线程执行避免阻塞 GUI
+
 ## 2026-09-21 收工：前台激活兜底 + 任务按钮3列排版 + 一条龙领奖去重 + 领奖后关面板
 
 - 修复 SetForegroundWindow 前台激活抛错中止任务：context.py 新增公共 `activate_window`（标准激活 → Alt 解锁重试 → 失败返回 False 不抛异常）；`_run_single_task` / `create_team` 统一改用，避免"窗口执行出错"导致任务第一行即停

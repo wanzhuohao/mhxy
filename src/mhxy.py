@@ -795,11 +795,17 @@ class GameLauncherApp:
         self.root.after(60000, self._start_button_update_timer)
 
     def close_all_games(self):
-        """关闭所有游戏窗口"""
+        """停止所有任务并关闭所有游戏窗口（发关闭消息后自动点确认框确定）。
+        参考 mhxy_code 的 close_game_windows：先停任务，发 WM_CLOSE，等待确认框出现后逐个点确定。"""
         windows = self._get_game_windows()
         if not windows:
             log("未找到游戏窗口", "WARN")
             return
+        self.stop_all_tasks()
+        threading.Thread(target=self._close_game_windows_thread, args=(windows,), daemon=True).start()
+
+    def _close_game_windows_thread(self, windows):
+        """发关闭消息给所有窗口，等待确认框出现后逐个点击确定按钮"""
         count = 0
         for hwnd, rect in windows:
             try:
@@ -808,6 +814,20 @@ class GameLauncherApp:
                 time.sleep(0.3)
             except Exception as e:
                 log(f"关闭窗口出错: {e}", "ERR")
+
+        if count:
+            # 等待各窗口退出确认框弹出后，逐个点确定（相对窗口坐标 582,489）
+            time.sleep(2)
+            for i, (hwnd, rect) in enumerate(windows, 1):
+                try:
+                    x = rect[0] + 582
+                    y = rect[1] + 489
+                    context.safe_click(x, y)
+                    log(f"窗口{i} 点击关闭确认 ({x},{y})")
+                    time.sleep(0.3)
+                except Exception as e:
+                    log(f"窗口{i}点击确认出错: {e}", "ERR")
+
         log(f"已关闭 {count} 个游戏窗口")
 
 
