@@ -74,6 +74,32 @@ def claim_double_points(stop_event):
     log("领取双倍点数完成")
 
 
+# 右上角捉鬼任务条识别区域（语义：left, top, right, bottom）。限制范围避免在其他文字中误匹配。
+_ZHUOGUI_BAR_REGION = (679, 162, 861, 225)
+
+
+def _trigger_task_bar(ox, oy, stop_event, prefix=""):
+    """双击捉鬼任务条触发寻路：优先图片识别定位任务条，识别不到用固定坐标兜底。
+    参考 mhxy_code 的 _trigger_task_bar（按主项目 left/top/right/bottom 语义重写）。"""
+    if stop_event.wait(1):
+        return False
+    region = (ox + _ZHUOGUI_BAR_REGION[0], oy + _ZHUOGUI_BAR_REGION[1],
+              ox + _ZHUOGUI_BAR_REGION[2], oy + _ZHUOGUI_BAR_REGION[3])
+    pos = find_pic(TPL['zhuogui'], yuzhi=0.7, region=region)
+    if pos:
+        log(f"{prefix}识别到捉鬼任务条 ({pos[0]},{pos[1]})，双击触发寻路")
+    else:
+        pos = (ox + 770, oy + 206)
+        log(f"{prefix}未识别到捉鬼任务条，双击兜底坐标 (770,206)")
+    _random_click(pos[0], pos[1], 5, 5)
+    if stop_event.wait(1):
+        return False
+    _random_click(pos[0], pos[1], 5, 5)
+    if stop_event.wait(1):
+        return False
+    return True
+
+
 def ling_shuang_start(stop_event: threading.Event):
     """领双：逐窗口打开挂机面板领取双倍点数（独立按钮，不再并入捉鬼）"""
     log("领双任务开始")
@@ -139,18 +165,27 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
     try:
         while not stop_event.is_set():
             if count == 0 and entered_from_activity:
-                # 第1轮：从活动进入，先执行确定等操作，再开始检测完成图
-                log("第1轮：从活动进入，执行确认操作")
-                if stop_event.wait(10):
+                # 第1轮：从活动进入，识别钟馗对话"捉鬼任务"选项，再双击任务条触发寻路
+                log("第1轮：等待钟馗对话，识别捉鬼任务选项...")
+                _got_option = False
+                for _ in range(30):
+                    if stop_event.is_set():
+                        break
+                    if find_and_click(TPL['zhuogui_xuanxiang'], yuzhi=0.7, region=w1_rect):
+                        log("第1轮：点击捉鬼任务选项 ✓")
+                        _got_option = True
+                        break
+                    if stop_event.wait(1):
+                        break
+                if stop_event.is_set():
                     break
-                safe_click(ox + 707, oy + 242)
+                if not _got_option:
+                    log("第1轮：未识别到捉鬼任务选项，固定坐标兜底")
+                    safe_click(ox + 707, oy + 242)
                 if stop_event.wait(1):
                     break
-                _random_click(ox + 767, oy + 206, 15, 15)
-                if stop_event.wait(1):
-                    break
-                _random_click(ox + 767, oy + 206, 10, 10)
-                if stop_event.wait(1):
+                _trigger_task_bar(ox, oy, stop_event, prefix="第1轮")
+                if stop_event.is_set():
                     break
                 log("第1轮确认操作完成，等待60秒后开始检测完成图")
             else:
@@ -191,15 +226,26 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
             if stop_event.wait(10):
                 break
 
-            safe_click(ox + 707, oy + 242)
+            # 识别钟馗对话"捉鬼任务"选项，识别不到再固定坐标兜底
+            _got_option = False
+            for _ in range(20):
+                if stop_event.is_set():
+                    break
+                if find_and_click(TPL['zhuogui_xuanxiang'], yuzhi=0.7, region=w1_rect):
+                    log("中间轮：点击捉鬼任务选项 ✓")
+                    _got_option = True
+                    break
+                if stop_event.wait(1):
+                    break
+            if stop_event.is_set():
+                break
+            if not _got_option:
+                safe_click(ox + 707, oy + 242)
             if stop_event.wait(1):
                 break
 
-            _random_click(ox + 767, oy + 206, 15, 15)
-            if stop_event.wait(1):
-                break
-            _random_click(ox + 767, oy + 206, 10, 10)
-            if stop_event.wait(1):
+            _trigger_task_bar(ox, oy, stop_event)
+            if stop_event.is_set():
                 break
 
             continue

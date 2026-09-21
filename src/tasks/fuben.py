@@ -3,8 +3,29 @@
 import random
 import threading
 from core import log, find_pic, find_and_click, find_all, find_and_click_path, scroll_activity, TPL, _wait, _retry, get_game_windows
-from context import safe_click, get_window_rect
+from context import safe_click, get_window_rect, activate_window, get_window_hwnd
 from notify import send_feishu_msg
+
+# 副本失败回长安城坐标（相对窗口左上角）
+_MAP_X, _MAP_Y = 45, 55      # 左上角地图
+_CHANGAN_X, _CHANGAN_Y = 415, 383  # 长安城
+# 失败框上空白处（相对窗口），点它返回主界面
+_FAIL_CLOSE_X, _FAIL_CLOSE_Y = 435, 95
+
+
+def _clear_all_fail_dialogs(stop_event):
+    """副本失败时组队的每个窗口都会弹"再接再厉/失败"框，且只有该窗口前台时点击才生效。
+    逐个激活窗口并点空白处(相对窗口 435,95)返回主界面，避免失败框残留在屏幕上。"""
+    for hwnd, wrect in get_game_windows():
+        if stop_event.is_set():
+            return
+        activate_window(hwnd)
+        if _wait(0.4, stop_event):
+            return
+        safe_click(wrect[0] + _FAIL_CLOSE_X, wrect[1] + _FAIL_CLOSE_Y)
+        log(f"清除窗口({wrect[0]},{wrect[1]})失败画面")
+        if _wait(0.5, stop_event):
+            return
 
 _jinru_index = 0  # 进入按钮轮流计数
 
@@ -101,6 +122,28 @@ def fuben_start(stop_event: threading.Event):
     qingxuanze_rect = (ox + 585, oy + 410, ox + 810, oy + 620)
     try:
         while not stop_event.is_set():
+            # 检测失败画面（"再接再厉"）：先清掉所有窗口的失败框，再让队长回长安
+            if find_pic(TPL['shibai'], yuzhi=0.7, region=rect):
+                log("[shibai] 副本失败，清除所有窗口失败画面")
+                _clear_all_fail_dialogs(stop_event)
+                if stop_event.is_set():
+                    break
+                # 清框时激活过其他窗口，回城操作前需重新激活队长窗口
+                hwnd1 = get_window_hwnd()
+                if hwnd1:
+                    activate_window(hwnd1)
+                if _wait(1, stop_event):
+                    break
+                safe_click(rect[0] + _MAP_X, rect[1] + _MAP_Y)
+                log("点击左上角地图")
+                if _wait(2, stop_event):
+                    break
+                safe_click(rect[0] + _CHANGAN_X, rect[1] + _CHANGAN_Y)
+                log("点击长安城，回城")
+                if _wait(3, stop_event):
+                    break
+                break  # 当前项目无多轮/卡死自恢复机制，回城后结束副本任务
+
             # 检测已完成，直接点击
             if find_and_click(TPL['yiwancheng'], yuzhi=0.8, region=rect):
                 log("[yiwancheng] 点击已完成，副本结束")

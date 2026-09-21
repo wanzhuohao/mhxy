@@ -121,4 +121,30 @@ def yabiao_start(stop_event):
         if _wait(3, stop_event):
             break
 
+    # 押镖结束后剑会群雄（天梯）弹窗才出现，扫描并关闭。
+    # 最多关 6 次防死循环；连续 2 轮检测不到天梯则认为已处理完。
+    close_count = 0
+    idle = 0
+    while not stop_event.is_set() and close_count < 6 and idle < 2:
+        shot = _screenshot_gray(full=True)
+        found_now = False
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['tianti'], rect)
+            if r:
+                xr = (max(rect[0], r[0] - 60), max(rect[1], r[1] - 120),
+                      min(rect[2], r[0] + 300), min(rect[3], r[1] + 80))
+                r_x = _match_in_region(shot, TPL['x'], xr)
+                if r_x:
+                    safe_click(r_x[0], r_x[1])
+                    log(f"窗口{i+1} [tianti] 关闭剑会群雄弹窗 ({r_x[0]},{r_x[1]})")
+                    found_now = True
+                    close_count += 1
+                    time.sleep(0.3)
+        if found_now:
+            idle = 0
+        else:
+            idle += 1
+        if _wait(2, stop_event):
+            break
+
     log("押镖任务完成")

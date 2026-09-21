@@ -50,6 +50,27 @@ def lingjiang_start(stop_event):
             time.sleep(0.3)
         time.sleep(0.5)
 
+    # 第3步：关闭奖励面板
+    # 参考 core.close_random_popups / zhuogui 领取双倍：全窗口识别 panel_x 关闭，
+    # 识别不到就不点（避免固定坐标点错），仅告警。
+    if _wait(1, stop_event):
+        return
+    shot_close = _screenshot_gray(full=True)
+    closed = 0
+    for i, (hwnd, rect) in enumerate(windows[:5]):
+        if stop_event and stop_event.is_set():
+            break
+        r = _match_in_region(shot_close, TPL['panel_x'], rect, yuzhi=0.7)
+        if r:
+            safe_click(r[0], r[1])
+            log(f"窗口{i+1} [panel_x] 关闭奖励面板 ({r[0]},{r[1]})")
+            time.sleep(0.3)
+            closed += 1
+        else:
+            log(f"窗口{i+1} 未识别到关闭按钮，跳过", "WARN")
+    if closed == 0:
+        log("领奖：未识别到任何关闭按钮", "WARN")
+
     log("领取奖励完成")
 
 

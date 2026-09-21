@@ -40,7 +40,7 @@ def zudui_start(stop_event: threading.Event):
     pyautogui.mouseUp()
     time.sleep(0.5)
 
-    friend_ys = [205, 241, 277, 317, 350]
+    friend_ys = [205, 241, 277, 317]  # 4 个好友（队伍最多 1 队长 + 4 队员）
     invite_pos = None  # 缓存邀请入队按钮位置
     for idx, fy in enumerate(friend_ys):
         if stop_event.is_set():

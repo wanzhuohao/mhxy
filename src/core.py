@@ -49,6 +49,8 @@ TPL = {
     'queding':        _load('common/queding.bmp'),
     'yasongbiaoyin':  _load('yabiao/yasongbiaoyin.jpg'),
     'yunbiao':        _load('yabiao/yunbiao.bmp'),
+    'tianti':         _load('yabiao/tianti.bmp'),
+    'x':              _load('yabiao/x.bmp'),
     'qiuzhu':         _load('dati/qiuzhu.bmp'),
     'qiuzhu2':        _load('dati/qiuzhu2.bmp'),
     'sanjie':         _load('dati/sanjie.bmp'),
@@ -84,10 +86,20 @@ TPL = {
     'qingxuanze':     _load('fuben/qingxuanze.bmp'),
     'zhan':           _load('fuben/zhan.bmp'),
     'guaguale_x':     _load('fuben/guaguale_x.jpg'),
+    'guagua_close_big': _load('guagua/close.bmp'),
+    'guagua_close_small': _load('guagua/close_small.bmp'),
+    # 卖东西（出售）+ 打工
+    'shangcheng':     _load('maidongxi/shangcheng.bmp'),
+    'shanghui_tab':   _load('maidongxi/shanghui.bmp'),
+    'woyaochushou_tab': _load('maidongxi/woyaochushou.bmp'),
+    'chushou_btn':    _load('maidongxi/chushou.bmp'),
+    'meiyoushangpin': _load('maidongxi/meiyoushangpin.bmp'),
+    'huoli_x':        _load('common/huoli_x.bmp'),
     'zhuoguirenwu':   _load('zhuogui/zhuoguirenwu.bmp'),
     'zhuogui':        _load('zhuogui/zhuogui.bmp'),
     'zhuoguiqueding': _load('zhuogui/zhuoguiqueding.bmp'),
     'zhuogui_wancheng': _load('zhuogui/wancheng.bmp'),
+    'zhuogui_xuanxiang': _load('zhuogui/zhuogui_xuanxiang.bmp'),
 }
 
 # 宝图搜索区域
@@ -335,9 +347,10 @@ def get_game_windows():
 
 # ========== 活动列表滚动 ==========
 
-def scroll_activity(rect, direction=-1, steps=3):
+def scroll_activity(rect, direction=-1, steps=3, amount=3):
     """在指定窗口区域内滚动活动列表。
     direction: -1=向下滚（看列表下方），1=向上滚（回顶部）
+    steps: 滚动次数；amount: 每次滚轮刻度（回顶用大幅值一次到位，找任务用小幅逐步）
     参考 mhxy_code 的 _scroll_role_page：滚轮无效时用拖动兜底。"""
     import pyautogui
     ox, oy = rect[0], rect[1]
@@ -347,7 +360,7 @@ def scroll_activity(rect, direction=-1, steps=3):
     before = _screenshot_gray((ox + 100, oy + 100, ox + 770, oy + 580))
     pyautogui.moveTo(sx, sy)
     for _ in range(steps):
-        pyautogui.scroll(direction * 3)
+        pyautogui.scroll(direction * amount)
         time.sleep(0.12)
     time.sleep(0.4)
     # 判断滚轮是否生效（对比滚动前后截图）
@@ -367,24 +380,45 @@ def scroll_activity(rect, direction=-1, steps=3):
         time.sleep(0.5)
 
 
-def scroll_and_recheck(template, regions, missing_indices, yuzhi=0.8, stop_event=None, max_scrolls=4):
-    """对未找到目标的窗口逐个滚动活动列表再重新匹配。
+def scroll_and_recheck(template, regions, missing_indices, yuzhi=0.8, stop_event=None,
+                       max_scrolls=12, top_amount=30):
+    """对未找到目标的窗口：先把活动列表滚回顶部，再从顶往下小步滚动逐个找任务。
+    这样即使面板打开时停在列表中间，也不会漏掉顶部的目标。
     返回 (found_list, still_missing, new_shot)。
     found_list: [(index, (cx, cy, val)), ...]
     still_missing: [index, ...]
     new_shot: 滚动后的全屏截图（供调用方继续用）"""
     found_list = []
     still_missing = list(missing_indices)
+    if not still_missing:
+        return found_list, still_missing, _screenshot_gray(full=True)
 
+    # 1) 先一次性大幅向上滚回活动列表顶部
+    for i in list(still_missing):
+        rect = regions[i]
+        scroll_activity(rect, direction=1, steps=1, amount=top_amount)
+
+    # 2) 在顶部先匹配一次
+    shot = _screenshot_gray(full=True)
+    new_still = []
+    for i in still_missing:
+        rect = regions[i]
+        r = _match_in_region(shot, template, rect, yuzhi)
+        if r:
+            found_list.append((i, r))
+        else:
+            new_still.append(i)
+    still_missing = new_still
+
+    # 3) 从顶部开始，每轮往下滚一小步，逐个向下找
     for scroll_round in range(max_scrolls):
         if not still_missing:
             break
         if stop_event and stop_event.is_set():
             break
-        # 逐个窗口滚动
         for i in list(still_missing):
             rect = regions[i]
-            scroll_activity(rect, direction=-1, steps=3)
+            scroll_activity(rect, direction=-1, steps=1)
         # 滚动后全屏截图，重新匹配
         shot = _screenshot_gray(full=True)
         new_still = []

@@ -185,30 +185,29 @@ def mijing_start(stop_event):
                     time.sleep(0.3)
             break
 
-        # 找进入战斗
-        found = False
+        # 逐窗口独立判断：每个窗口先找"进入"，再找"进入战斗"，再找"秘境降妖"，找到哪个点哪个。
+        # 5 个窗口互不影响，各自推进（避免一个窗口命中就跳过其他窗口的动作）。
         for i, rect in enumerate(REGIONS):
             if i in done_windows:
+                continue
+            # 该窗口区域内识别一遍
+            r = _match_in_region(shot, TPL['mijing_jinru'], rect)
+            if r:
+                safe_click(r[0], r[1])
+                log(f"窗口{i+1} [mijing_jinru] 点击进入 ({r[0]},{r[1]})")
+                time.sleep(0.3)
                 continue
             r = _match_in_region(shot, TPL['jinruzhandou'], rect, yuzhi=0.75)
             if r:
                 safe_click(r[0], r[1])
                 log(f"窗口{i+1} [jinruzhandou] 点击进入战斗 ({r[0]},{r[1]})")
-                found = True
                 time.sleep(0.3)
-
-        if not found:
-            # 找秘境降妖
-            shot = _screenshot_gray(full=True)
-            for i, rect in enumerate(REGIONS):
-                if i in done_windows:
-                    continue
-                r = _match_in_region(shot, TPL['mijingxiangyao'], rect, yuzhi=0.5)
-                if r:
-                    safe_click(r[0], r[1])
-                    log(f"窗口{i+1} [mijingxiangyao] 点击秘境降妖 ({r[0]},{r[1]})")
-                    found = True
-                    time.sleep(0.3)
+                continue
+            r = _match_in_region(shot, TPL['mijingxiangyao'], rect, yuzhi=0.5)
+            if r:
+                safe_click(r[0], r[1])
+                log(f"窗口{i+1} [mijingxiangyao] 点击秘境降妖 ({r[0]},{r[1]})")
+                time.sleep(0.3)
 
         if _wait(3, stop_event):
             break
