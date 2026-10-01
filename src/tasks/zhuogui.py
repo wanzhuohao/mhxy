@@ -6,7 +6,7 @@ import time
 import win32gui
 import win32con
 import win32api
-from core import log, TPL, REGIONS, find_pic, find_and_click, scroll_activity, _retry, _wait
+from core import log, TPL, REGIONS, find_pic, find_and_click, scroll_activity, _nudge_down, _wait
 from context import safe_click
 from notify import send_feishu_msg
 
@@ -128,31 +128,54 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
         if _wait(2, stop_event):
             return
 
-        # 第2步：点捉鬼右边的按钮（未找到则点击重试）
-        if not _retry(lambda: find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10)):
-            # 如果屏幕上有活动按钮，先点击活动再重试
+        # 第2步：找"捉鬼任务"按钮并点其右边；找不到先刷新活动面板再找
+        def _tap_zhuoguirenwu():
+            return find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10)
+
+        def _tap_zhuoguirenwu_nudged():
+            """滚动找到捉鬼按钮后再向下拖50px微调，重新定位后点右边，避免按钮贴边点不到"""
+            pos = find_pic(TPL['zhuoguirenwu'], region=w1_rect)
+            if not pos:
+                return False
+            _nudge_down(w1_rect, dy=50)
+            pos = find_pic(TPL['zhuoguirenwu'], region=w1_rect)
+            if not pos:
+                return False
+            safe_click(pos[0] + 130, pos[1] + 10)
+            log(f"捉鬼：[zhuoguirenwu] 微调后点击右边 ({pos[0]+130},{pos[1]+10})")
+            return True
+
+        found_zhuogui = _tap_zhuoguirenwu()
+        if not found_zhuogui and not stop_event.is_set():
+            # 活动区若有活动按钮，先再次点击刷新面板，再找一次
             if find_pic(TPL['huodong'], region=w1_rect):
                 find_and_click(TPL['huodong'], region=w1_rect)
-                log("重试前再次点击活动")
-                if _wait(2, stop_event):
-                    return
+                log("捉鬼：重试前再次点击活动")
             else:
                 safe_click(132, 188)
-            if _wait(3, stop_event):
+            if _wait(2, stop_event):
                 return
-            if not _retry(lambda: find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10)):
-                # 滚动活动列表再找
-                found_zhuogui = False
-                for _ in range(4):
-                    if stop_event.is_set():
-                        return
-                    scroll_activity(w1_rect, direction=-1, steps=3)
-                    if find_and_click(TPL['zhuoguirenwu'], region=w1_rect, dx=130, dy=10):
-                        found_zhuogui = True
-                        break
-                if not found_zhuogui:
-                    log("捉鬼：未找到捉鬼按钮", "WARN")
+            found_zhuogui = _tap_zhuoguirenwu()
+
+        # 第3步：仍未找到则滚动活动列表找（对齐 scroll_and_recheck：先回顶部再向下逐轮）
+        if not found_zhuogui and not stop_event.is_set():
+            log("捉鬼：未立即找到捉鬼按钮，滚动活动列表查找")
+            scroll_activity(w1_rect, direction=1, steps=10)  # 大幅向上滚回列表顶部
+            if _wait(1, stop_event):
+                return
+            found_zhuogui = _tap_zhuoguirenwu_nudged()
+            for _ in range(8):
+                if stop_event.is_set():
                     return
+                if found_zhuogui:
+                    break
+                scroll_activity(w1_rect, direction=-1, steps=3)  # 向下逐轮找
+                if _wait(1, stop_event):
+                    return
+                found_zhuogui = _tap_zhuoguirenwu_nudged()
+        if not found_zhuogui:
+            log("捉鬼：滚动后仍未找到捉鬼按钮", "WARN")
+            return
         if _wait(2, stop_event):
             return
     else:

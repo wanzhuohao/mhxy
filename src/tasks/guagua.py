@@ -35,12 +35,13 @@ def guagua_start(stop_event):
             return
         ox, oy = rect[0], rect[1]
 
-        # 阶段0：先点福利图标（30,140）进入刮刮乐
+        # 阶段0：先点福利图标（30,140）进入刮刮乐（需点2次才生效）
         fx, fy = ox + _FULI_X, oy + _FULI_Y
-        safe_click(fx, fy)
-        log(f"窗口{i+1} 点击福利图标 ({fx},{fy})")
-        if _wait(0.5, stop_event):
-            return
+        for _ in range(2):
+            safe_click(fx, fy)
+            log(f"窗口{i+1} 点击福利图标 ({fx},{fy})")
+            if _wait(0.3, stop_event):
+                return
 
         # 点刮刮乐按钮
         bx, by = ox + _BTN_X, oy + _BTN_Y
