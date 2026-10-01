@@ -17,7 +17,7 @@ def watu_start(stop_event):
     found_baoguo = []
     missing = []
     for i, rect in enumerate(REGIONS):
-        r = _match_in_region(shot, TPL['baoguo'], rect)
+        r = _match_in_region(shot, TPL['baoguo'], rect, yuzhi=0.75)
         if r:
             found_baoguo.append((i, r))
         else:
@@ -35,10 +35,11 @@ def watu_start(stop_event):
                 return
             shot = _screenshot_gray(full=True)
             for i, rect in enumerate(REGIONS):
-                r = _match_in_region(shot, TPL['baoguo'], rect)
+                r = _match_in_region(shot, TPL['baoguo'], rect, yuzhi=0.75)
                 if r:
                     return watu_start(stop_event)
         log("挖图等待包裹按钮超时", "WARN")
+        send_feishu_msg("⚠️ 挖图：等待包裹按钮超时（5分钟）")
 
     # 点击找到的包裹
     for i, (cx, cy, val) in found_baoguo:

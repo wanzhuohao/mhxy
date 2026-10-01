@@ -11,6 +11,18 @@ _MAP_X, _MAP_Y = 45, 55      # 左上角地图
 _CHANGAN_X, _CHANGAN_Y = 415, 383  # 长安城
 # 失败框上空白处（相对窗口），点它返回主界面
 _FAIL_CLOSE_X, _FAIL_CLOSE_Y = 435, 95
+# "前往参与"弹窗关闭按钮 ×（相对窗口坐标）
+_QIANWANG_CLOSE_X, _QIANWANG_CLOSE_Y = 613, 472
+
+
+def _close_qianwang(stop_event, rect, yuzhi=0.8):
+    """检测"前往参与"弹窗，出现则点击右上角 ×（相对窗口 613,472）关闭。
+    返回 True 表示检测到并已点击关闭。"""
+    if find_pic(TPL['qianwang'], yuzhi=yuzhi, region=rect):
+        safe_click(rect[0] + _QIANWANG_CLOSE_X, rect[1] + _QIANWANG_CLOSE_Y)
+        log(f"[qianwang] 检测到前往参与弹窗，点击关闭 ({rect[0]+_QIANWANG_CLOSE_X},{rect[1]+_QIANWANG_CLOSE_Y})")
+        return True
+    return False
 
 
 def _clear_all_fail_dialogs(stop_event):
@@ -93,6 +105,11 @@ def fuben_start(stop_event: threading.Event):
             send_feishu_msg("⚠️ 副本：未找到选择副本按钮")
             return
         if _wait(2, stop_event):
+            return
+
+        # 点击进入前先处理"前往参与"弹窗：出现则点 × 关闭，避免挡住进入按钮
+        _close_qianwang(stop_event, rect)
+        if _wait(1, stop_event):
             return
 
         # 第4步：找进入按钮，轮流点击

@@ -226,7 +226,7 @@ def _dati_sanjie(stop_event):
     shot = _screenshot_gray(full=True)
     found_sanji_direct = []
     for i, rect in enumerate(REGIONS):
-        r = _match_in_region(shot, TPL['sanjie'], rect)
+        r = _match_in_region(shot, TPL['sanjie'], rect, yuzhi=0.75)
         if r:
             found_sanji_direct.append((i, r))
     if found_sanji_direct:
@@ -266,7 +266,7 @@ def _dati_sanjie(stop_event):
     found_sanji = []
     missing = []
     for i, rect in enumerate(REGIONS):
-        r = _match_in_region(shot, TPL['sanjie'], rect)
+        r = _match_in_region(shot, TPL['sanjie'], rect, yuzhi=0.75)
         if r:
             found_sanji.append((i, r))
         else:
@@ -279,7 +279,7 @@ def _dati_sanjie(stop_event):
             shot = result
         still_missing = []
         for i in missing:
-            r = _match_in_region(shot, TPL['sanjie'], REGIONS[i])
+            r = _match_in_region(shot, TPL['sanjie'], REGIONS[i], yuzhi=0.75)
             if r:
                 found_sanji.append((i, r))
             else:
@@ -288,7 +288,7 @@ def _dati_sanjie(stop_event):
 
     # 滚动活动列表再找
     if missing:
-        scroll_found, missing, shot = scroll_and_recheck(TPL['sanjie'], REGIONS, missing, stop_event=stop_event)
+        scroll_found, missing, shot = scroll_and_recheck(TPL['sanjie'], REGIONS, missing, stop_event=stop_event, yuzhi=0.75)
         found_sanji.extend(scroll_found)
 
     for i, r in found_sanji:

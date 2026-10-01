@@ -1,7 +1,7 @@
 """打工任务（点击人物头像 → 点击使用 → 点击打工按钮）
 
 参考 mhxy_code 的 shiyonggongju.py，仅保留"打工"部分：
-每个窗口 点头像(825,35) → 点使用(727,287) → 打工按钮(682,279) 点10次 → 关闭面板。
+每个窗口 点头像(825,35) → 点使用(727,287) → 打工按钮(682,279) 点20次 → 关闭面板。
 坐标均为窗口内相对坐标，按 REGIONS 偏移映射。当前项目 safe_click 无 force 参数，已去掉。
 """
 
@@ -96,11 +96,11 @@ def _close_panels(stop_event, rounds=1):
 
 
 def shiyonggongju_start(stop_event):
-    """打工：头像一次 → 使用一次 → 打工按钮10次。"""
+    """打工：头像一次 → 使用一次 → 打工按钮20次。"""
     log("打工任务开始")
     if _open_and_use(stop_event) is None:
         return
     if _wait(2, stop_event):  # 等待新页面加载
         return
-    _click_sub_button(stop_event, "打工", 682, 279, repeats=10, pre_close=(742, 141))
+    _click_sub_button(stop_event, "打工", 682, 279, repeats=20, pre_close=(742, 141))
     log("打工任务完成")

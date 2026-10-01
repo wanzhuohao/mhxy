@@ -95,6 +95,7 @@ TPL = {
     'chushou_btn':    _load('maidongxi/chushou.bmp'),
     'meiyoushangpin': _load('maidongxi/meiyoushangpin.bmp'),
     'huoli_x':        _load('common/huoli_x.bmp'),
+    'qianwang':       _load('common/qianwang.png'),
     'zhuoguirenwu':   _load('zhuogui/zhuoguirenwu.bmp'),
     'zhuogui':        _load('zhuogui/zhuogui.bmp'),
     'zhuoguiqueding': _load('zhuogui/zhuoguiqueding.bmp'),
@@ -380,6 +381,21 @@ def scroll_activity(rect, direction=-1, steps=3, amount=3):
         time.sleep(0.5)
 
 
+def _nudge_down(rect, dy=50):
+    """找到按钮后微调：向上拖 dy 像素，让按钮离开列表底部边缘（内容下移、按钮上移）。
+    dy>0 向上拖；dy<0 反向（回拖恢复用）。"""
+    import pyautogui
+    ox, oy = rect[0], rect[1]
+    sx, sy = ox + 435, oy + 380
+    pyautogui.moveTo(sx, sy)
+    time.sleep(0.2)
+    pyautogui.mouseDown()
+    time.sleep(0.15)
+    pyautogui.moveTo(sx, sy - dy, duration=0.4)
+    pyautogui.mouseUp()
+    time.sleep(0.4)
+
+
 def scroll_and_recheck(template, regions, missing_indices, yuzhi=0.8, stop_event=None,
                        max_scrolls=12, top_amount=30):
     """对未找到目标的窗口：先把活动列表滚回顶部，再从顶往下小步滚动逐个找任务。
@@ -422,13 +438,42 @@ def scroll_and_recheck(template, regions, missing_indices, yuzhi=0.8, stop_event
         # 滚动后全屏截图，重新匹配
         shot = _screenshot_gray(full=True)
         new_still = []
+        found_this_round = []
         for i in still_missing:
             rect = regions[i]
             r = _match_in_region(shot, template, rect, yuzhi)
             if r:
                 found_list.append((i, r))
+                found_this_round.append(i)
             else:
                 new_still.append(i)
         still_missing = new_still
+
+        # 本轮找到的窗口再向下拖 50px 微调后重新匹配，用新坐标覆盖旧坐标，
+        # 避免按钮刚露出时贴着列表底部边缘，点击右边偏移位置点不到。
+        # 微调后匹配不到就反向拖回恢复原坐标；恢复也失败则放弃该窗口，
+        # 绝不保留滚动前的过期坐标去点击。
+        if found_this_round:
+            for i in found_this_round:
+                _nudge_down(regions[i], dy=50)
+            shot2 = _screenshot_gray(full=True)
+            for i in found_this_round:
+                r2 = _match_in_region(shot2, template, regions[i], yuzhi)
+                if r2:
+                    for idx, (fi, _fr) in enumerate(found_list):
+                        if fi == i:
+                            found_list[idx] = (i, r2)
+                            break
+                else:
+                    _nudge_down(regions[i], dy=-30)
+                    shot3 = _screenshot_gray(full=True)
+                    r3 = _match_in_region(shot3, template, regions[i], yuzhi)
+                    if r3:
+                        for idx, (fi, _fr) in enumerate(found_list):
+                            if fi == i:
+                                found_list[idx] = (i, r3)
+                                break
+                    else:
+                        found_list[:] = [x for x in found_list if x[0] != i]
 
     return found_list, still_missing, _screenshot_gray(full=True)

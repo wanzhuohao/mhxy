@@ -26,7 +26,10 @@ def zudui_start(stop_event: threading.Event):
     _activate_window(first_hwnd)
     time.sleep(1)
 
-    _click_at(first_rect, 18 * 1.5, 313 * 1.5)
+    # 第一个点：连点2次，避免单次点不开
+    for _ in range(2):
+        _click_at(first_rect, 18 * 1.5, 313 * 1.5)
+        time.sleep(0.5)
     time.sleep(1)
 
     # 先向上拖拽好友列表，滚过系统消息，露出4个好友
