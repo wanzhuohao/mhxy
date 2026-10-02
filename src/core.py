@@ -239,6 +239,20 @@ def find_pic(template, yuzhi=0.8, region=None):
     return False
 
 
+# "前往参与"弹窗关闭按钮 ×（相对窗口坐标）
+QIANWANG_CLOSE_X, QIANWANG_CLOSE_Y = 613, 472
+
+
+def close_qianwang(rect, yuzhi=0.8):
+    """检测"前往参与"弹窗，出现则点右上角 ×(相对窗口 613,472) 关闭。
+    返回 True 表示检测到并已点击关闭。供副本/组队等任务复用。"""
+    if find_pic(TPL['qianwang'], yuzhi=yuzhi, region=rect):
+        safe_click(rect[0] + QIANWANG_CLOSE_X, rect[1] + QIANWANG_CLOSE_Y)
+        log(f"[qianwang] 检测到前往参与弹窗，点击关闭 ({rect[0]+QIANWANG_CLOSE_X},{rect[1]+QIANWANG_CLOSE_Y})")
+        return True
+    return False
+
+
 def find_pic_debug(template, yuzhi=0.8, region=None):
     """同 find_pic，但返回 (cx, cy, max_val) 三元组，未命中返回 (None, None, max_val)
     用于调试：打印当前匹配度，帮助判断阈值是否合理"""

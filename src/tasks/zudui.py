@@ -7,7 +7,7 @@ import win32gui
 import win32api
 import win32con
 import pyautogui
-from core import log, get_game_windows, find_pic, find_and_click, TPL
+from core import log, get_game_windows, find_pic, find_and_click, TPL, close_qianwang
 from context import safe_click
 
 
@@ -31,6 +31,10 @@ def zudui_start(stop_event: threading.Event):
         _click_at(first_rect, 18 * 1.5, 313 * 1.5)
         time.sleep(0.5)
     time.sleep(1)
+
+    # 滑动前先处理"前往参与"弹窗：出现则点 × 关闭，避免挡住好友列表拖拽
+    close_qianwang(first_rect)
+    time.sleep(0.5)
 
     # 先向上拖拽好友列表，滚过系统消息，露出4个好友
     drag_x = first_rect[0] + int(223 * 1.5)
