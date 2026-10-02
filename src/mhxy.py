@@ -516,6 +516,9 @@ class GameLauncherApp:
                 # 后续识别不到按钮时任务自身会重试/跳过
                 log("窗口激活到前台失败，继续尝试执行", "WARN")
             time.sleep(0.5)
+            # 停止已请求时不再启动任务，避免停止后仍激活窗口并执行首步操作
+            if stop_event.is_set():
+                return
             if rounds is not None:
                 func(stop_event, rounds=rounds)
             else:
@@ -757,6 +760,10 @@ class GameLauncherApp:
 
             task_stop = threading.Event()
             self.task_stop_events['all_in_one_current'] = task_stop
+            # 若主停止事件已置位（停止发生在循环顶部检查之后），同步给子任务事件，
+            # 确保当前子任务也能立即感知停止，不会在"停止"后仍多跑一步
+            if stop_event.is_set():
+                task_stop.set()
             func = TASK_FUNCS.get(task_name)
             if func:
                 self._run_single_task(hwnd, rect, func, task_stop, rounds=rounds)
