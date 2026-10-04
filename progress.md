@@ -4,6 +4,13 @@
 
 - （暂无）
 
+## 2026-10-04 停止可中断滚动 + F12 全局停止 + 日志窗口隐藏 + 前往参与关闭上移
+
+- 停止可即时中断滚动/拖拽：core.scroll_activity/_nudge_down 接入 stop_event，scroll_and_recheck/副本/捉鬼/组队等调用点透传
+- 新增全局 F12 停止热键：pynput keyboard 监听，游戏窗口前台（如滚动中）也生效，回调经 root.after 切回主线程
+- 启动时可靠隐藏控制台日志窗口：_hide_console 带重试 + root.after 延时兜底，替换原单次 GetConsoleWindow 隐藏
+- 「前往参与」弹窗关闭逻辑从 fuben 上移到 core.close_qianwang，组队拖拽前复用；mhxy 停止事件同步（停止后不再启动任务/当前子任务立即感知停止）
+
 ## 2026-10-01 副本"前往参与"弹窗 + 关闭游戏手动确定
 
 - 注册 common/qianwang.png 模板；fuben.py 新增 `_close_qianwang` 方法：检测"前往参与"弹窗出现时点右上角 ×(相对窗口 613,472) 关闭；在副本"找进入按钮并点击"之前先调用
