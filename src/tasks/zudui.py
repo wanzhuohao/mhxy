@@ -36,13 +36,21 @@ def zudui_start(stop_event: threading.Event):
     close_qianwang(first_rect)
     time.sleep(0.5)
 
+    if stop_event.is_set():
+        return
+
     # 先向上拖拽好友列表，滚过系统消息，露出4个好友
     drag_x = first_rect[0] + int(223 * 1.5)
     drag_y = first_rect[1] + int(300 * 1.5)
     pyautogui.moveTo(drag_x, drag_y)
     time.sleep(0.3)
+    if stop_event.is_set():
+        return
     pyautogui.mouseDown()
     time.sleep(0.2)
+    if stop_event.is_set():
+        pyautogui.mouseUp()
+        return
     pyautogui.moveTo(drag_x, drag_y - 55, duration=0.3)
     pyautogui.mouseUp()
     time.sleep(0.5)

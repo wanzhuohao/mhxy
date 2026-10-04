@@ -137,7 +137,7 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
             pos = find_pic(TPL['zhuoguirenwu'], region=w1_rect)
             if not pos:
                 return False
-            _nudge_down(w1_rect, dy=50)
+            _nudge_down(w1_rect, dy=50, stop_event=stop_event)
             pos = find_pic(TPL['zhuoguirenwu'], region=w1_rect)
             if not pos:
                 return False
@@ -160,7 +160,7 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
         # 第3步：仍未找到则滚动活动列表找（对齐 scroll_and_recheck：先回顶部再向下逐轮）
         if not found_zhuogui and not stop_event.is_set():
             log("捉鬼：未立即找到捉鬼按钮，滚动活动列表查找")
-            scroll_activity(w1_rect, direction=1, steps=10)  # 大幅向上滚回列表顶部
+            scroll_activity(w1_rect, direction=1, steps=10, stop_event=stop_event)  # 大幅向上滚回列表顶部
             if _wait(1, stop_event):
                 return
             found_zhuogui = _tap_zhuoguirenwu_nudged()
@@ -169,7 +169,7 @@ def zhuogui_start(stop_event: threading.Event, rounds=2):
                     return
                 if found_zhuogui:
                     break
-                scroll_activity(w1_rect, direction=-1, steps=3)  # 向下逐轮找
+                scroll_activity(w1_rect, direction=-1, steps=3, stop_event=stop_event)  # 向下逐轮找
                 if _wait(1, stop_event):
                     return
                 found_zhuogui = _tap_zhuoguirenwu_nudged()

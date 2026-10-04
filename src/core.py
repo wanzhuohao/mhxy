@@ -362,12 +362,15 @@ def get_game_windows():
 
 # ========== 活动列表滚动 ==========
 
-def scroll_activity(rect, direction=-1, steps=3, amount=3):
+def scroll_activity(rect, direction=-1, steps=3, amount=3, stop_event=None):
     """在指定窗口区域内滚动活动列表。
     direction: -1=向下滚（看列表下方），1=向上滚（回顶部）
     steps: 滚动次数；amount: 每次滚轮刻度（回顶用大幅值一次到位，找任务用小幅逐步）
+    stop_event: 传入后滚动过程中可被停止信号中断。
     参考 mhxy_code 的 _scroll_role_page：滚轮无效时用拖动兜底。"""
     import pyautogui
+    if stop_event is not None and stop_event.is_set():
+        return
     ox, oy = rect[0], rect[1]
     # 活动面板列表区域中心（相对窗口坐标约 435, 380）
     sx, sy = ox + 435, oy + 380
@@ -375,9 +378,13 @@ def scroll_activity(rect, direction=-1, steps=3, amount=3):
     before = _screenshot_gray((ox + 100, oy + 100, ox + 770, oy + 580))
     pyautogui.moveTo(sx, sy)
     for _ in range(steps):
+        if stop_event is not None and stop_event.is_set():
+            return
         pyautogui.scroll(direction * amount)
         time.sleep(0.12)
     time.sleep(0.4)
+    if stop_event is not None and stop_event.is_set():
+        return
     # 判断滚轮是否生效（对比滚动前后截图）
     after = _screenshot_gray((ox + 100, oy + 100, ox + 770, oy + 580))
     try:
@@ -385,26 +392,40 @@ def scroll_activity(rect, direction=-1, steps=3, amount=3):
     except Exception:
         changed = True
     if not changed:
+        if stop_event is not None and stop_event.is_set():
+            return
         log("滚轮未生效，用拖动兜底", "WARN")
         pyautogui.moveTo(sx, sy)
         pyautogui.mouseDown()
         time.sleep(0.25)
         target_y = sy + (100 if direction < 0 else -100)
-        pyautogui.moveTo(sx, target_y, duration=0.6)
+        # 分段移动，途中可被停止中断（松开鼠标后返回）
+        for i in range(6):
+            if stop_event is not None and stop_event.is_set():
+                pyautogui.mouseUp()
+                return
+            pyautogui.moveTo(sx, sy + int((target_y - sy) * (i + 1) / 6), duration=0.1)
         pyautogui.mouseUp()
         time.sleep(0.5)
 
 
-def _nudge_down(rect, dy=50):
+def _nudge_down(rect, dy=50, stop_event=None):
     """找到按钮后微调：向上拖 dy 像素，让按钮离开列表底部边缘（内容下移、按钮上移）。
     dy>0 向上拖；dy<0 反向（回拖恢复用）。"""
     import pyautogui
+    if stop_event is not None and stop_event.is_set():
+        return
     ox, oy = rect[0], rect[1]
     sx, sy = ox + 435, oy + 380
     pyautogui.moveTo(sx, sy)
     time.sleep(0.2)
+    if stop_event is not None and stop_event.is_set():
+        return
     pyautogui.mouseDown()
     time.sleep(0.15)
+    if stop_event is not None and stop_event.is_set():
+        pyautogui.mouseUp()
+        return
     pyautogui.moveTo(sx, sy - dy, duration=0.4)
     pyautogui.mouseUp()
     time.sleep(0.4)
@@ -426,7 +447,7 @@ def scroll_and_recheck(template, regions, missing_indices, yuzhi=0.8, stop_event
     # 1) 先一次性大幅向上滚回活动列表顶部
     for i in list(still_missing):
         rect = regions[i]
-        scroll_activity(rect, direction=1, steps=1, amount=top_amount)
+        scroll_activity(rect, direction=1, steps=1, amount=top_amount, stop_event=stop_event)
 
     # 2) 在顶部先匹配一次
     shot = _screenshot_gray(full=True)
@@ -448,7 +469,7 @@ def scroll_and_recheck(template, regions, missing_indices, yuzhi=0.8, stop_event
             break
         for i in list(still_missing):
             rect = regions[i]
-            scroll_activity(rect, direction=-1, steps=1)
+            scroll_activity(rect, direction=-1, steps=1, stop_event=stop_event)
         # 滚动后全屏截图，重新匹配
         shot = _screenshot_gray(full=True)
         new_still = []
@@ -469,7 +490,7 @@ def scroll_and_recheck(template, regions, missing_indices, yuzhi=0.8, stop_event
         # 绝不保留滚动前的过期坐标去点击。
         if found_this_round:
             for i in found_this_round:
-                _nudge_down(regions[i], dy=50)
+                _nudge_down(regions[i], dy=50, stop_event=stop_event)
             shot2 = _screenshot_gray(full=True)
             for i in found_this_round:
                 r2 = _match_in_region(shot2, template, regions[i], yuzhi)
@@ -479,7 +500,7 @@ def scroll_and_recheck(template, regions, missing_indices, yuzhi=0.8, stop_event
                             found_list[idx] = (i, r2)
                             break
                 else:
-                    _nudge_down(regions[i], dy=-30)
+                    _nudge_down(regions[i], dy=-30, stop_event=stop_event)
                     shot3 = _screenshot_gray(full=True)
                     r3 = _match_in_region(shot3, template, regions[i], yuzhi)
                     if r3:

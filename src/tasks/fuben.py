@@ -64,7 +64,7 @@ def fuben_start(stop_event: threading.Event):
                 for _ in range(4):
                     if stop_event.is_set():
                         return
-                    scroll_activity(rect, direction=-1, steps=3)
+                    scroll_activity(rect, direction=-1, steps=3, stop_event=stop_event)
                     if find_and_click(TPL['putong'], dx=100, dy=10, region=rect):
                         found_putong = True
                         break

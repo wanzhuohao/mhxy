@@ -12,7 +12,7 @@ import win32con
 import win32api
 import pyautogui
 pyautogui.FAILSAFE = False
-from pynput import mouse
+from pynput import mouse, keyboard
 
 import core
 from core import log
@@ -99,6 +99,7 @@ class GameLauncherApp:
         self._build_ui()
         self._check_launcher()
         self._start_button_update_timer()
+        self._start_stop_hotkey()
 
     def _load_cfg(self):
         """加载用户配置到 self.cfg（window.json），不存在或损坏时用默认"""
@@ -146,8 +147,13 @@ class GameLauncherApp:
             pass
 
     def _on_close(self):
-        """关闭窗口时保存位置"""
+        """关闭窗口时保存位置并释放全局热键监听"""
         self._save_geometry()
+        try:
+            if getattr(self, '_kb_listener', None):
+                self._kb_listener.stop()
+        except Exception:
+            pass
         self.root.destroy()
 
     def _make_btn(self, parent, text, command, color=C_BTN, hover=C_BTN_HOVER,
@@ -801,6 +807,26 @@ class GameLauncherApp:
         """启动定时器，每分钟更新一次按钮显示状态"""
         self.root.after(60000, self._start_button_update_timer)
 
+    def _start_stop_hotkey(self):
+        """全局 F12 停止热键：即使游戏窗口在前台（如滚动中）也能触发停止。"""
+        self._kb_listener = None
+
+        def on_press(key):
+            try:
+                if key == keyboard.Key.f12:
+                    # pynput 回调在监听线程内，切回主线程操作 tkinter
+                    self.root.after(0, self.stop_all_tasks)
+            except Exception:
+                pass
+
+        try:
+            self._kb_listener = keyboard.Listener(on_press=on_press)
+            self._kb_listener.daemon = True
+            self._kb_listener.start()
+            log("F12 停止热键已启用")
+        except Exception as e:
+            log(f"F12 停止热键启动失败: {e}", "WARN")
+
     def close_all_games(self):
         """停止所有任务并关闭所有游戏窗口（只发关闭消息，退出确认框由用户手动点确定）"""
         windows = self._get_game_windows()
@@ -823,19 +849,31 @@ class GameLauncherApp:
         log(f"已向 {count} 个游戏窗口发送关闭消息，请手动点退出确认")
 
 
+def _hide_console(retries=20, interval=0.05):
+    """隐藏控制台日志窗口。带重试：GetConsoleWindow 首次可能返回 0，循环等待再隐藏。
+    返回最终拿到的控制台句柄，无控制台（如 pythonw）时返回 0。"""
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+    user32 = ctypes.windll.user32
+    for _ in range(retries):
+        hwnd = kernel32.GetConsoleWindow()
+        if hwnd:
+            try:
+                user32.ShowWindow(hwnd, 0)  # SW_HIDE
+            except Exception:
+                pass
+            return hwnd
+        time.sleep(interval)
+    return 0
+
+
 if __name__ == "__main__":
     # 启动时隐藏控制台日志窗口（不再显示黑色命令行）
-    try:
-        import ctypes
-        kernel32 = ctypes.windll.kernel32
-        user32 = ctypes.windll.user32
-        HWND = kernel32.GetConsoleWindow()
-        if HWND:
-            user32.ShowWindow(HWND, 0)  # SW_HIDE
-    except Exception:
-        pass
+    _hide_console()
 
     root = tk.Tk()
     app = GameLauncherApp(root)
-    root.bind('<F12>', lambda e: app.stop_all_tasks())
+    # 兜底：某些环境下控制台窗口可能晚出现，延时再隐藏一次
+    root.after(500, _hide_console)
+    # F12 停止热键已由 app 的全局键盘监听接管（GameLauncherApp._start_stop_hotkey）
     root.mainloop()
