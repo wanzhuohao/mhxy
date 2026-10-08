@@ -1,15 +1,69 @@
 """秘境任务（全屏截图，分5区域处理）"""
 
 import time
+import random
 from core import log, _screenshot_gray, TPL, _wait
 from context import safe_click
 from notify import send_feishu_msg
 from core import _match_in_region, _retry_click_activity, scroll_and_recheck, REGIONS
 
 
+def _click_use_buttons(stop_event, no_hit_limit=3, wait=2):
+    """秘境开始前：先把残留的「使用」按钮点完（复用挖图的 shiyong/激活/整理检测）。
+    连续 no_hit_limit 轮未找到则结束。"""
+    no_count = 0
+    while not stop_event.is_set():
+        shot = _screenshot_gray(full=True)
+        found_any = False
+
+        # 激活弹窗兜底（同挖图）
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['jihuo'], rect, yuzhi=0.8)
+            if r:
+                ox, oy = rect[0], rect[1]
+                safe_click(ox + 641 + random.randint(-3, 3), oy + 201 + random.randint(-3, 3))
+                log(f"窗口{i+1} [jihuo] 点击激活")
+                found_any = True
+                time.sleep(0.3)
+
+        # 整理弹窗兜底（同挖图）
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['zhengli'], rect, yuzhi=0.8)
+            if r:
+                ox, oy = rect[0], rect[1]
+                safe_click(ox + 771, oy + 138)
+                log(f"窗口{i+1} [zhengli] 检测到整理弹窗，点击X")
+                found_any = True
+                time.sleep(0.3)
+
+        # 使用按钮
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['shiyong'], rect, yuzhi=0.65)
+            if r:
+                safe_click(r[0], r[1])
+                log(f"窗口{i+1} [shiyong] 点击使用 ({r[0]},{r[1]})")
+                found_any = True
+                time.sleep(0.3)
+
+        if found_any:
+            no_count = 0
+        else:
+            no_count += 1
+            if no_count >= no_hit_limit:
+                break
+
+        if _wait(wait, stop_event):
+            break
+
+
 def mijing_start(stop_event):
     """秘境：全屏截图 → 点活动 → 点秘境右边 → 进入战斗/降妖"""
     log("秘境任务开始")
+
+    # 第0步：先把残留的「使用」按钮点完，再开始秘境（避免使用弹窗挡住活动入口）
+    _click_use_buttons(stop_event)
+    if stop_event.is_set():
+        return
 
     # 第1步：全屏截图，找5个窗口的活动按钮
     shot = _screenshot_gray(full=True)
