@@ -6,7 +6,6 @@ import threading
 import time
 
 from context import activate_window, safe_click, safe_drag, safe_press
-from daily_progress import daily_progress
 from core import (
     TPL,
     _screenshot_rgb,
@@ -43,8 +42,6 @@ def quwen_start(stop_event: threading.Event):
     windows.sort(key=lambda item: (item[1][1], item[1][0]))
     windows = windows[:5]
 
-    recorded_done = daily_progress.completed_indices("quwen", windows)
-    already_done = set(recorded_done)
     completed: set[int] = set()
     start_failed: set[int] = set()
     timed_out: set[int] = set()
@@ -52,9 +49,6 @@ def quwen_start(stop_event: threading.Event):
     for index, (hwnd, rect) in enumerate(windows):
         if stop_event.is_set():
             return
-        if index in recorded_done:
-            log(f"窗口{index + 1} 今日趣闻鉴赏已有完成记录，跳过")
-            continue
 
         status = _open_space(index, hwnd, rect, stop_event)
         if status != STARTED:
@@ -77,13 +71,10 @@ def quwen_start(stop_event: threading.Event):
             break
         if liked >= MAX_NEW_LIKES:
             completed.add(index)
-            daily_progress.mark_completed(
-                "quwen", index, hwnd=hwnd, rect=rect, source="five_likes"
-            )
             log(f"窗口{index + 1} 趣闻鉴赏完成，本次点赞{liked}条")
         elif exhausted:
             # 找不到候选按钮并不能证明已经完成：可能打开了错误页面，
-            # 或滚动位置不对。绝不能写入今日完成记录。
+            # 或滚动位置不对。
             timed_out.add(index)
             log(f"窗口{index + 1} 只确认点赞{liked}条，找不到更多按钮，未判定完成", "WARN")
         else:
@@ -95,10 +86,10 @@ def quwen_start(stop_event: threading.Event):
         return
 
     summary = (
-        f"趣闻鉴赏结束：完成{len(completed)}个，已完成{len(already_done)}个，"
+        f"趣闻鉴赏结束：完成{len(completed)}个，"
         f"未启动{len(start_failed)}个，超时{len(timed_out)}个"
     )
-    level = "" if len(completed) + len(already_done) == 5 and not start_failed and not timed_out else "WARN"
+    level = "" if len(completed) == 5 and not start_failed and not timed_out else "WARN"
     log(summary, level)
     send_feishu_msg(summary)
 
