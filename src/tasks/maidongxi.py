@@ -1,57 +1,30 @@
-"""卖东西 —— Alt+A 打开，切到我要出售，循环点物品+出售
+"""卖东西 —— 点商城图标打开，切到我要出售，循环点物品+出售
 
-第一步打开用 Alt+A（SendInput 硬件扫描码，梦幻不认 keybd_event/pyautogui 的虚拟键）
-替代原来的点商城图标；后续沿用原逻辑。多窗口并行时用锁串行"激活+发键"，
-避免键盘焦点竞争把 Alt+A 发到别的窗口。
+第一步打开用鼠标点商城图标（相对窗口 41,200），不再用 Alt+A 快捷键；后续沿用原逻辑。
 """
 
 import time
 import random
-import threading
-import ctypes
 from core import log, _wait, safe_click, find_pic, find_and_click, TPL, REGIONS, get_game_windows
 import win32gui
 
 
-# ---- SendInput 发硬件扫描码（虚拟键游戏不认，必须扫描码）----
-_PUL = ctypes.POINTER(ctypes.c_ulong)
-class _KBD(ctypes.Structure):
-    _fields_ = [("wVk", ctypes.c_ushort), ("wScan", ctypes.c_ushort),
-                ("dwFlags", ctypes.c_ulong), ("time", ctypes.c_ulong), ("dwExtraInfo", _PUL)]
-class _MOU(ctypes.Structure):
-    _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long), ("mouseData", ctypes.c_ulong),
-                ("dwFlags", ctypes.c_ulong), ("time", ctypes.c_ulong), ("dwExtraInfo", _PUL)]
-class _INU(ctypes.Union):
-    _fields_ = [("mi", _MOU), ("ki", _KBD)]
-class _INPUT(ctypes.Structure):
-    _anonymous_ = ("u",)
-    _fields_ = [("type", ctypes.c_ulong), ("u", _INU)]
+# 商城图标相对窗口坐标（替代原来的 Alt+A 快捷键）
+_OPEN_REL = (41, 200)
 
-_SCANCODE = 0x0008
-_KEYUP = 0x0002
 
-def _scan(code, up=False):
-    flags = _SCANCODE | (_KEYUP if up else 0)
-    inp = _INPUT(); inp.type = 1; inp.ki = _KBD(0, code, flags, 0, None)
-    ctypes.windll.user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(_INPUT))
-
-# 键盘全局锁：Alt+A 依赖前台焦点，多窗口并行会互抢前台把键发错窗口，必须串行
-_hotkey_lock = threading.Lock()
-
-def _open_by_hotkey(hwnd):
-    """激活窗口并按 Alt+A 打开（全局串行，保证键发给正确窗口）。Alt=0x38 A=0x1E"""
-    with _hotkey_lock:
-        if hwnd:
-            try:
-                win32gui.SetForegroundWindow(hwnd)
-            except Exception:
-                pass
-            time.sleep(0.4)
-        _scan(0x38); time.sleep(0.04)
-        _scan(0x1E); time.sleep(0.04)
-        _scan(0x1E, True); time.sleep(0.04)
-        _scan(0x38, True)
-        time.sleep(0.3)
+def _open_by_click(hwnd, rect):
+    """激活窗口并点击商城图标打开（不再用 Alt+A）。"""
+    if hwnd:
+        try:
+            win32gui.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
+        time.sleep(0.4)
+    x = rect[0] + _OPEN_REL[0] + random.randint(-3, 3)
+    y = rect[1] + _OPEN_REL[1] + random.randint(-3, 3)
+    safe_click(x, y)
+    time.sleep(0.3)
 
 
 # 后续步骤相对坐标（商会界面校准值，保留）
@@ -102,18 +75,18 @@ def _close_shop_panel(stop_event, label, tries=3, rect=None):
 
 
 def _sell_one_window(hwnd, rect, stop_event):
-    """对单个窗口执行出售流程：Alt+A打开→切商会→切我要出售→循环出售→关闭。
+    """对单个窗口执行出售流程：点商城打开→切商会→切我要出售→循环出售→关闭。
     返回出售次数。"""
     x0, y0 = rect[0], rect[1]
     label = _window_label(rect)
 
-    # 1. 打开（Alt+A 替代点商城），并激活该窗口
-    log(f"[卖东西] {label} 打开(Alt+A)")
-    _open_by_hotkey(hwnd)
+    # 1. 打开商城（点商城图标，不再用 Alt+A）
+    log(f"[卖东西] {label} 打开(点商城)")
+    _open_by_click(hwnd, rect)
     if _wait(2.5, stop_event):
         return 0
 
-    # 2. 点击右侧"商会"标签（Alt+A 打开的是摆摊，需切到商会）
+    # 2. 点击右侧"商会"标签（打开的是摆摊/商城，需切到商会）
     log(f"[卖东西] {label} 切换到商会")
     _click_tpl_or_rel('shanghui_tab', x0, y0, _REL_SHANGHUI_TAB, stop_event, label="商会", rect=rect)
     if _wait(2, stop_event):
@@ -156,7 +129,7 @@ def _sell_one_window(hwnd, rect, stop_event):
 
 
 def maidongxi_start(stop_event):
-    """出售：遍历 5 个窗口，逐个 Alt+A→切商会→切我要出售→循环出售→关闭。"""
+    """出售：遍历 5 个窗口，逐个点商城→切商会→切我要出售→循环出售→关闭。"""
     log("[卖东西] 任务开始")
 
     windows = get_game_windows()
