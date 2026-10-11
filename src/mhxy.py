@@ -62,6 +62,7 @@ class GameLauncherApp:
         ('bangpai',   '帮派'),
         ('shiyonggongju', '打工'),
         ('maidongxi', '出售'),
+        ('quwen',     '趣闻'),
         ('huijia',    '回家'),
     ]
 
@@ -215,7 +216,7 @@ class GameLauncherApp:
             btn.grid(row=r + t_row, column=t_col, padx=2, pady=2, sticky='ew')
             self.task_buttons[name] = btn
             self.task_running[name] = False
-        r += 6
+        r += (len(self.TASK_DEFS) + 2) // 3
 
         # 一条龙配置：捉鬼轮数（加减按钮）+ 跳过师门
         cfg_line = tk.Frame(btn_frame, bg=C_BG)

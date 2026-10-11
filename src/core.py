@@ -101,6 +101,12 @@ TPL = {
     'zhuoguiqueding': _load('zhuogui/zhuoguiqueding.bmp'),
     'zhuogui_wancheng': _load('zhuogui/wancheng.bmp'),
     'zhuogui_xuanxiang': _load('zhuogui/zhuogui_xuanxiang.bmp'),
+    # 趣闻鉴赏（空间点赞）
+    'quwen':            _load('quwen/activity_quwen.png'),
+    'quwen_like':       _load('quwen/like_unselected.png'),
+    'quwen_collapse':   _load('quwen/collapse.png'),
+    'quwen_detail_close': _load('quwen/detail_close.png'),
+    'quwen_exit':       _load('quwen/exit.png'),
 }
 
 # 宝图搜索区域

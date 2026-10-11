@@ -60,6 +60,46 @@ def safe_double_click(x, y):
         pyautogui.doubleClick(x, y)
 
 
+def safe_drag(start_x, start_y, end_x, end_y, *, jitter=5, duration=(0.55, 0.85)):
+    """按窗口锁串行拖动（列表翻页用）。jitter 加随机抖动，duration 控制拖动时长。"""
+    import pyautogui
+    import random
+    jitter = max(0, int(jitter))
+    sx = int(round(start_x)) + random.randint(-jitter, jitter)
+    sy = int(round(start_y)) + random.randint(-jitter, jitter)
+    ex = int(round(end_x)) + random.randint(-jitter, jitter)
+    ey = int(round(end_y)) + random.randint(-jitter, jitter)
+    drag_duration = random.uniform(*duration)
+
+    def _drag():
+        pyautogui.moveTo(sx, sy, duration=random.uniform(0.15, 0.30))
+        pyautogui.mouseDown()
+        try:
+            pyautogui.moveTo(ex, ey, duration=drag_duration)
+        finally:
+            pyautogui.mouseUp()
+
+    hwnd = get_window_hwnd()
+    if hwnd:
+        lock = get_window_lock(hwnd)
+        with lock:
+            _drag()
+    else:
+        _drag()
+
+
+def safe_press(key):
+    """按窗口锁串行发送单个按键。"""
+    import pyautogui
+    hwnd = get_window_hwnd()
+    if hwnd:
+        lock = get_window_lock(hwnd)
+        with lock:
+            pyautogui.press(key)
+    else:
+        pyautogui.press(key)
+
+
 def activate_window(hwnd, rect=None):
     """把窗口激活到前台，多种方案兜底，失败不抛异常（返回是否成功）。
 
