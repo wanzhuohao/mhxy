@@ -4,6 +4,12 @@
 
 - （暂无）
 
+## 2026-10-11 趣闻鉴赏任务 + 任务按钮行数修复 + 出售改点商城
+
+- 新增趣闻鉴赏任务（quwen，空间点赞）：移植 `_reference_梦幻助手` 的 quwen.py，滚动找入口改用现有 scroll_activity；新增 daily_progress 每日完成记录（存 mhxy/daily-progress.json，已 gitignore）、context.safe_drag/safe_press、core 新增 quwen 5 张模板；注册进 `_TASK_ORDER`（置于回家前）
+- 修复任务按钮行数写死 6 行、加任务后「回家」被下方配置行覆盖：`r += 6` → 按任务数动态计算 `(len(TASK_DEFS)+2)//3`
+- 出售任务改用鼠标点商城图标打开（相对窗口 41,200），移除 Alt+A 的 SendInput 发键码死代码
+
 ## 2026-10-09 组队/刮刮乐顺序对调 + 秘境前先点使用
 
 - 组队与刮刮乐任务顺序对调（组队在前），`_TASK_ORDER` 单一来源三处联动（按钮/一条龙/中途继续）
