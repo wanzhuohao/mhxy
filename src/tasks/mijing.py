@@ -5,7 +5,7 @@ import random
 from core import log, _screenshot_gray, TPL, _wait
 from context import safe_click
 from notify import send_feishu_msg
-from core import _match_in_region, _retry_click_activity, scroll_and_recheck, REGIONS
+from core import _match_in_region, _match_all_in_region, _retry_click_activity, scroll_and_recheck, REGIONS
 
 
 def _click_use_buttons(stop_event, no_hit_limit=3, wait=2):
@@ -177,8 +177,9 @@ def mijing_start(stop_event):
                     time.sleep(0.5)
                     # 截图找进入按钮
                     shot2 = _screenshot_gray(full=True)
-                    r2 = _match_in_region(shot2, TPL['mijing_jinru'], rect)
-                    if r2:
+                    r2_list = _match_all_in_region(shot2, TPL['mijing_jinru'], rect)
+                    if r2_list:
+                        r2 = r2_list[0]  # 多个进入时点最左边
                         safe_click(r2[0], r2[1])
                         log(f"窗口{i+1} [mijing_jinru] 点击进入 ({r2[0]},{r2[1]})")
                         time.sleep(0.3)
@@ -245,8 +246,9 @@ def mijing_start(stop_event):
             if i in done_windows:
                 continue
             # 该窗口区域内识别一遍
-            r = _match_in_region(shot, TPL['mijing_jinru'], rect)
-            if r:
+            r_list = _match_all_in_region(shot, TPL['mijing_jinru'], rect)
+            if r_list:
+                r = r_list[0]  # 多个进入时点最左边
                 safe_click(r[0], r[1])
                 log(f"窗口{i+1} [mijing_jinru] 点击进入 ({r[0]},{r[1]})")
                 time.sleep(0.3)

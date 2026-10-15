@@ -159,6 +159,23 @@ def _match_in_region(shot_full, template, region, yuzhi=0.8):
     return None
 
 
+def _match_all_in_region(shot_full, template, region, yuzhi=0.8):
+    """在全屏截图的指定区域内匹配模板，返回所有匹配中心坐标列表（网格去重，按 x 升序）。"""
+    x0, y0, x1, y1 = region
+    crop = shot_full[y0:y1, x0:x1]
+    result = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
+    locations = np.where(result >= yuzhi)
+    h, w = template.shape[:2]
+    grid = {}
+    for pt_y, pt_x in zip(*locations):
+        cx = pt_x + w // 2 + x0
+        cy = pt_y + h // 2 + y0
+        key = (pt_x // w, pt_y // h)
+        if key not in grid:
+            grid[key] = (cx, cy)
+    return sorted(grid.values(), key=lambda p: p[0])
+
+
 def _retry_click_activity(missing_indices, stop_event):
     """对未找到按钮的窗口重试：如果屏幕上有活动按钮就先点活动，否则点(132,188)"""
     if not missing_indices:

@@ -80,6 +80,8 @@ def yabiao_start(stop_event):
         log("所有窗口都未找到活动按钮，直接进入押镖循环")
 
     # 第3步：循环找运送镖银 → 确定
+    idle_rounds = 0    # 连续空轮数（一轮里既没点运送镖银、也没点确定）
+    IDLE_LIMIT = 3     # 连续空轮达到该值才判定结束，避免界面切换/瞬时漏识别造成误停
     while not stop_event.is_set():
         shot = _screenshot_gray(full=True)
         found_any = False
@@ -106,7 +108,7 @@ def yabiao_start(stop_event):
                 found_any = True
                 time.sleep(0.3)
 
-        # 判断结束：有5个活动按钮且没有确定/运送镖银
+        # 判断结束：连续多轮无任何押镖动作，且5个窗口都有活动按钮
         if not found_any:
             shot = _screenshot_gray(full=True)
             activity_count = 0
@@ -115,8 +117,12 @@ def yabiao_start(stop_event):
                 if r:
                     activity_count += 1
             if activity_count >= 5:
-                log("5个窗口都有活动按钮，押镖结束")
-                break
+                idle_rounds += 1
+                if idle_rounds >= IDLE_LIMIT:
+                    log(f"连续{IDLE_LIMIT}轮无押镖动作且5个窗口都有活动按钮，押镖结束")
+                    break
+        else:
+            idle_rounds = 0
 
         if _wait(3, stop_event):
             break
