@@ -185,10 +185,10 @@ def fuben_start(stop_event: threading.Event):
                 _wait(2, stop_event)
                 continue
 
-            # 本轮什么都没找到：累计空转。连续120秒毫无响应 => 判定副本卡死，结束回城
+            # 本轮什么都没找到：累计空转。连续300秒毫无响应 => 判定副本卡死，结束回城
             idle_count += 1
-            if idle_count >= 120:
-                log("副本：连续120秒无响应，判定副本卡死，结束副本", "WARN")
+            if idle_count >= 30:  # 30轮 × 10秒 = 300秒 = 5分钟
+                log("副本：连续5分钟无响应，判定副本卡死，结束副本", "WARN")
                 send_feishu_msg("⚠️ 副本失败/卡死，已结束副本")
                 _clear_all_fail_dialogs(stop_event)
                 if not stop_event.is_set():
@@ -204,7 +204,7 @@ def fuben_start(stop_event: threading.Event):
                     _wait(3, stop_event)
                 break
 
-            if _wait(1, stop_event):
+            if _wait(10, stop_event):
                 break
         log("副本任务完成")
     except Exception as e:

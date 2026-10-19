@@ -158,7 +158,7 @@ def mijing_start(stop_event):
         shot = _screenshot_gray(full=True)
         jixu_found = False
         for i, rect in enumerate(REGIONS):
-            r = _match_in_region(shot, TPL['jixu'], rect)
+            r = _match_in_region(shot, TPL['jixu'], rect, yuzhi=0.75)
             if r:
                 safe_click(r[0], r[1])
                 log(f"窗口{i+1} [jixu] 点击继续 ({r[0]},{r[1]})")
@@ -194,7 +194,7 @@ def mijing_start(stop_event):
                         if _wait(3, stop_event):
                             return
                         shot4 = _screenshot_gray(full=True)
-                        r4 = _match_in_region(shot4, TPL['jixu'], rect)
+                        r4 = _match_in_region(shot4, TPL['jixu'], rect, yuzhi=0.75)
                         if r4:
                             safe_click(r4[0], r4[1])
                             log(f"窗口{i+1} [jixu] 点击继续 ({r4[0]},{r4[1]})")
