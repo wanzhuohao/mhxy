@@ -126,9 +126,11 @@ def fuben_start(stop_event: threading.Event):
     zhan_rect = (ox + 758, oy + 190, ox + 870, oy + 252)
     qingxuanze_rect = (ox + 585, oy + 410, ox + 810, oy + 620)
     try:
+        idle_count = 0  # 连续空转计数：本轮什么都没找到时累加，用于卡死兜底
         while not stop_event.is_set():
             # 检测失败画面（"再接再厉"）：先清掉所有窗口的失败框，再让队长回长安
             if find_pic(TPL['shibai'], yuzhi=0.7, region=rect):
+                idle_count = 0
                 log("[shibai] 副本失败，清除所有窗口失败画面")
                 _clear_all_fail_dialogs(stop_event)
                 if stop_event.is_set():
@@ -151,11 +153,13 @@ def fuben_start(stop_event: threading.Event):
 
             # 检测已完成，直接点击
             if find_and_click(TPL['yiwancheng'], yuzhi=0.8, region=rect):
+                idle_count = 0
                 log("[yiwancheng] 点击已完成，副本结束")
                 break
 
             # 持续检测跳过按钮
             if _retry(lambda: find_and_click_path('fubentiaoguo.bmp', yuzhi=0.6, region=rect)):
+                idle_count = 0
                 # 跳过按钮匹配到后，轮询战按钮（多次重试）
                 for _ in range(10):
                     if stop_event.is_set():
@@ -169,15 +173,36 @@ def fuben_start(stop_event: threading.Event):
 
             # 持续检测请选择（限定区域）
             if find_and_click(TPL['qingxuanze'], yuzhi=0.7, region=qingxuanze_rect, dx=50, dy=20):
+                idle_count = 0
                 log("[qingxuanze] 副本：点击请选取")
                 _wait(2, stop_event)
                 continue
 
             # 持续检测战按钮（不依赖跳过按钮）
             if find_and_click(TPL['zhan'], yuzhi=0.8, region=zhan_rect, dx=-20, dy=-5):
+                idle_count = 0
                 log("[zhan] 副本：点击战")
                 _wait(2, stop_event)
                 continue
+
+            # 本轮什么都没找到：累计空转。连续120秒毫无响应 => 判定副本卡死，结束回城
+            idle_count += 1
+            if idle_count >= 120:
+                log("副本：连续120秒无响应，判定副本卡死，结束副本", "WARN")
+                send_feishu_msg("⚠️ 副本失败/卡死，已结束副本")
+                _clear_all_fail_dialogs(stop_event)
+                if not stop_event.is_set():
+                    hwnd1 = get_window_hwnd()
+                    if hwnd1:
+                        activate_window(hwnd1)
+                    _wait(1, stop_event)
+                    safe_click(rect[0] + _MAP_X, rect[1] + _MAP_Y)
+                    log("点击左上角地图")
+                    _wait(2, stop_event)
+                    safe_click(rect[0] + _CHANGAN_X, rect[1] + _CHANGAN_Y)
+                    log("点击长安城，回城")
+                    _wait(3, stop_event)
+                break
 
             if _wait(1, stop_event):
                 break
