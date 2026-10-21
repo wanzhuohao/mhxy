@@ -76,6 +76,8 @@ def zudui_start(stop_event: threading.Event):
             safe_click(invite_pos[0] + random.randint(-3, 3), invite_pos[1] + random.randint(-3, 3))
             log(f"好友{idx+1}: 邀请入队 ✓")
         time.sleep(0.5)
+        # 每个好友循环都检测"前往参与"弹窗，出现则点 × 关闭
+        close_qianwang(first_rect)
 
     if invite_pos is None:
         log("所有好友都未找到邀请入队按钮", "WARN")
