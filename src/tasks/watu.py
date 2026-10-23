@@ -118,6 +118,15 @@ def watu_start(stop_event):
                 found_any = True
                 time.sleep(0.3)
 
+        # 找未使用的宝图并双击（共用同一张截图），出现则双击打开下一张宝图
+        for i, rect in enumerate(REGIONS):
+            r = _match_in_region(shot, TPL['watu_baotu'], rect)
+            if r:
+                safe_double_click(r[0], r[1])
+                log(f"窗口{i+1} [baotu] 双击宝图 ({r[0]},{r[1]})")
+                found_any = True
+                time.sleep(0.3)
+
         if found_any:
             no_count = 0
         else:
