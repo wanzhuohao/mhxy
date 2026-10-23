@@ -5,6 +5,8 @@ import json
 import os
 import time
 
+from logger import log
+
 _CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.json')
 _CONFIG = {}
 if os.path.exists(_CONFIG_FILE):
@@ -13,7 +15,7 @@ if os.path.exists(_CONFIG_FILE):
             _CONFIG = json.load(f)
     except (OSError, ValueError) as e:
         # 配置损坏时不能阻断整个脚本，打警告后用空配置继续
-        print(f"[WARN] 读取飞书配置失败，使用空配置继续: {e}")
+        log(f"读取飞书配置失败，使用空配置继续: {e}", "WARN")
 
 FEISHU_CHAT_ID = _CONFIG.get('feishu_chat_id', '')
 LARK_CLI_PATH = _CONFIG.get('lark_cli_path', 'lark-cli')
@@ -48,17 +50,17 @@ def send_feishu_msg(text):
             if result.returncode == 0:
                 return
             last_err = _decode(result.stderr or result.stdout).strip()
-            print(f"[WARN] 飞书通知失败(第{attempt}次): {last_err}")
+            log(f"飞书通知失败(第{attempt}次): {last_err}", "WARN")
         except subprocess.TimeoutExpired:
             last_err = f"超时({_TIMEOUT}s)"
-            print(f"[WARN] 飞书通知{last_err}(第{attempt}次)")
+            log(f"飞书通知{last_err}(第{attempt}次)", "WARN")
         except FileNotFoundError as e:
             # lark-cli 不在 PATH 或路径错，重试也没用，直接告警退出
-            print(f"[WARN] 飞书通知未找到 lark-cli: {e}")
+            log(f"飞书通知未找到 lark-cli: {e}", "WARN")
             return
         except Exception as e:
             last_err = str(e)
-            print(f"[WARN] 飞书通知异常(第{attempt}次): {e}")
+            log(f"飞书通知异常(第{attempt}次): {e}", "WARN")
         if attempt < _MAX_ATTEMPTS:
             time.sleep(_RETRY_INTERVAL)
-    print(f"[ERROR] 飞书通知全部失败，已放弃: {last_err}")
+    log(f"飞书通知全部失败，已放弃: {last_err}", "ERR")

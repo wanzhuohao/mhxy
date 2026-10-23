@@ -11,17 +11,11 @@ import random
 
 from context import get_window_rect, safe_click
 from notify import send_feishu_msg
+from logger import log
 
 _sct = mss.mss()
 _sct_lock = threading.Lock()
 _TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
-
-
-def log(msg, level=""):
-    """带时间戳的日志"""
-    ts = time.strftime("%H:%M")
-    prefix = f"[{ts}]" if not level else f"[{ts} {level}]"
-    print(f"{prefix} {msg}")
 
 
 # ========== 模板预加载 ==========

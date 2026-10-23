@@ -253,7 +253,7 @@ class GameLauncherApp:
             row=r, column=0, padx=2, pady=2, sticky='ew')
         self._midway_btn = self._make_btn(btn_frame, "中途继续", self._toggle_midway, C_ALL_IN_ONE, C_ALL_IN_ONE_HOVER)
         self._midway_btn.grid(row=r, column=1, padx=2, pady=2, sticky='ew')
-        self.log_btn = self._make_btn(btn_frame, "打开日志", self._toggle_console, C_BTN_SPECIAL)
+        self.log_btn = self._make_btn(btn_frame, "打开日志", self._open_log_file, C_BTN_SPECIAL)
         self.log_btn.grid(row=r, column=2, padx=2, pady=2, sticky='ew')
         r += 1
 
@@ -270,33 +270,16 @@ class GameLauncherApp:
         self._make_btn(bottom_frame, "关闭游戏", self.close_all_games, C_BTN_STOP, C_BTN_STOP_HOVER).grid(
             row=0, column=1, padx=2, pady=0, sticky='ew')
 
-    def _console_hwnd(self):
-        """取当前进程控制台窗口句柄，无则返回 0"""
-        try:
-            import ctypes
-            return ctypes.windll.kernel32.GetConsoleWindow()
-        except Exception:
-            return 0
-
-    def _toggle_console(self):
-        """打开/关闭控制台日志窗口（仅切换显示隐藏）"""
-        hwnd = self._console_hwnd()
-        if not hwnd:
-            log("未找到控制台窗口", "WARN")
+    def _open_log_file(self):
+        """打开日志文件（用系统默认编辑器查看）"""
+        log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs', 'mhxy.log')
+        if not os.path.exists(log_path):
+            log("日志文件不存在", "WARN")
             return
         try:
-            import ctypes
-            user32 = ctypes.windll.user32
-            if user32.IsWindowVisible(hwnd):
-                user32.ShowWindow(hwnd, 0)  # SW_HIDE
-                self.log_btn.config(text="打开日志")
-                log("控制台已隐藏")
-            else:
-                user32.ShowWindow(hwnd, 5)  # SW_SHOW
-                self.log_btn.config(text="关闭日志")
-                log("控制台已显示")
+            os.startfile(log_path)
         except Exception as e:
-            log(f"切换控制台出错: {e}", "ERR")
+            log(f"打开日志文件出错: {e}", "ERR")
 
     def _check_launcher(self):
         if not os.path.exists(self.game_launcher_path):
