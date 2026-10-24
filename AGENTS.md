@@ -25,7 +25,7 @@ mhxy/
 ├── logs/           # 运行日志（保留3天）
 ├── docs/           # 维护文档
 ├── progress.md     # 开发进度
-├── CLAUDE.md       # 项目说明
+├── AGENTS.md       # 项目说明
 └── window.json    # 窗口位置配置
 ```
 
