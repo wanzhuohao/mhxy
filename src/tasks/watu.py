@@ -111,7 +111,7 @@ def watu_start(stop_event):
 
         # 找使用按钮并点击（共用同一张截图）
         for i, rect in enumerate(REGIONS):
-            r = _match_in_region(shot, TPL['shiyong'], rect, yuzhi=0.65)
+            r = _match_in_region(shot, TPL['shiyong'], rect, yuzhi=0.70)
             if r:
                 safe_click(r[0], r[1])
                 log(f"窗口{i+1} [shiyong] 点击使用 ({r[0]},{r[1]})")
