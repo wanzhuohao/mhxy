@@ -1,9 +1,8 @@
 __pycache__/
 *.pyc
 *.pyo
-window.json
+config.json
 screen.png
-src/config.json
 logs/
 docs/
 progress.md

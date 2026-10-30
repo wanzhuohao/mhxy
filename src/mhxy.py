@@ -41,7 +41,7 @@ C_TITLE_BG = "#0c0c1d"      # 标题栏（深夜）
 
 
 class GameLauncherApp:
-    CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "window.json")
+    CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json")
 
     # ========== 统一任务顺序源（按钮 / 一条龙 / 中途继续共用，只在此处维护顺序） ==========
     _TASK_ORDER = [
@@ -84,7 +84,10 @@ class GameLauncherApp:
         # 关闭时保存位置
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        self.game_launcher_path = r"C:\Program Files\梦幻西游时空\MyLauncher_x64r.exe"
+        # 游戏启动器路径：从配置读取，缺省时回退到常见安装路径
+        self.game_launcher_path = self.cfg.get(
+            'game_launcher_path',
+            r"C:\Program Files\梦幻西游时空\MyLauncher_x64r.exe")
 
         # 任务配置：按 _TASK_ORDER 顺序每行 3 个自动排布 (名称, 显示文本, 行, 列)
         self.TASK_DEFS = [
@@ -103,7 +106,8 @@ class GameLauncherApp:
         self._start_stop_hotkey()
 
     def _load_cfg(self):
-        """加载用户配置到 self.cfg（window.json），不存在或损坏时用默认"""
+        """加载用户配置到 self.cfg（config.json），不存在或损坏时用默认"""
+        self.cfg = {}
         try:
             if os.path.exists(self.CONFIG_FILE):
                 with open(self.CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -114,7 +118,7 @@ class GameLauncherApp:
             self.cfg = {}
 
     def _save_cfg(self):
-        """将 self.cfg 写回 window.json（保留既有字段）"""
+        """将 self.cfg 写回 config.json（保留既有字段）"""
         try:
             with open(self.CONFIG_FILE, 'w', encoding='utf-8') as f:
                 json.dump(self.cfg, f)

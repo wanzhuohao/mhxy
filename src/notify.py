@@ -7,7 +7,7 @@ import time
 
 from logger import log
 
-_CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.json')
+_CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config.json')
 _CONFIG = {}
 if os.path.exists(_CONFIG_FILE):
     try:

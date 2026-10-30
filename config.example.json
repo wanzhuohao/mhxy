@@ -1,0 +1,18 @@
+{
+  "// 游戏启动器路径": "修改为你本机梦幻西游启动器的绝对路径",
+  "game_launcher_path": "C:\\Program Files\\梦幻西游时空\\MyLauncher_x64r.exe",
+
+  "// 窗口几何位置（自动保存，无需手动修改）": "",
+  "width": 380,
+  "height": 520,
+  "x": 1700,
+  "y": 200,
+
+  "// 任务偏好设置": "",
+  "zhuogui_rounds": 5,
+  "skip_shimen": true,
+
+  "// 飞书通知（可选，留空则不发送）": "",
+  "feishu_chat_id": "",
+  "lark_cli_path": "lark-cli"
+}
